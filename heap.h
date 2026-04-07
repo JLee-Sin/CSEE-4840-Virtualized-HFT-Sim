@@ -41,10 +41,6 @@ Heap *create_heap(int capacity, HeapCmpFunc cmp) {
 	return h;
 }
 
-static void check_for_trade(Heap *asks, Heap *bids) {
-	//TODO: Implement function that peeks at both roots, compares price, executes trade if the price of the root of the bid heap is equal or greater than the root of the ask heap, then amounts are compared for a partial fill if necessary, pops roots of heaps after trade is finished unless partial fill happened, then prints the trade timestamp and offer information
-}
-
 static int rand_range(int min, int max) {
 	return min + rand() % (max - min + 1);
 }
@@ -160,6 +156,30 @@ void *max_cmp(const void *a, const void *b) {
 	} else {
 		return (void *)b;
 	}
+}
+
+static void check_for_trade(Heap *asks, Heap *bids) {
+	if(((Order *)peek(bids))->price >= ((Order *)peek(asks))->price) {
+		if(((Order *)peek(bids))->amount == ((Order *)peek(asks))->amount) {
+			printf("A trade has been executed! Sold %d shares of AAA at %d.\n", ((Order *)peek(bids))->amount, ((Order *)peek(asks))->price);
+			pop(bids);
+			pop(asks);
+		} else {
+			if(((Order *)peek(bids))->amount > ((Order *)peek(asks))->amount) {
+				printf("A partial fill has been executed! Sold %d shares of AAA at %d. A bid of %d remains.",
+						((Order *)peek(asks))->amount, ((Order *)peek(asks))->price, 
+						(((Order *)peek(bids))->amount - ((Order *)peek(asks))->amount));
+				update(bids, (((Order *)peek(bids))->amount - ((Order *)peek(asks))->amount));
+				pop(asks);
+			} else {
+				printf("A partial fill has been executed! Sold %d shares of AAA at %d. A ask of %d remains.",
+						((Order *)peek(bids))->amount, ((Order *)peek(bids))->price, 
+						(((Order *)peek(asks))->amount - ((Order *)peek(bids))->amount));
+				update(bids, (((Order *)peek(asks))->amount - ((Order *)peek(bids))->amount));
+				pop(bids);
+			}
+		}
+	}	
 }
 
 #endif
