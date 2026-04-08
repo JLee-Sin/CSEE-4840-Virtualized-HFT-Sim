@@ -159,23 +159,46 @@ void *max_cmp(const void *a, const void *b) {
 }
 
 static void check_for_trade(Heap *asks, Heap *bids) {
-	if(((Order *)peek(bids))->price >= ((Order *)peek(asks))->price) {
-		if(((Order *)peek(bids))->amount == ((Order *)peek(asks))->amount) {
-			printf("A trade has been executed! Sold %d shares of AAA at %d.\n", ((Order *)peek(bids))->amount, ((Order *)peek(asks))->price);
+	if(asks->size == 0 || bids->size == 0) {
+		return;
+	}
+	
+	Order *bid = (Order *)peek(bids);
+	Order *ask = (Order *)peek(asks);
+
+	if(bid->price >= ask->price) {
+		if(bid->amount == ask->amount) {
+			struct timespec ts;
+			clock_gettime(CLOCK_MONOTONIC, &ts);
+			printf("A trade has been executed at %ld! Sold %d shares of AAA at $%d.\n",
+				       ts.tv_nsec,
+				       ask->amount,
+				       bid->price
+			);
 			pop(bids);
 			pop(asks);
 		} else {
-			if(((Order *)peek(bids))->amount > ((Order *)peek(asks))->amount) {
-				printf("A partial fill has been executed! Sold %d shares of AAA at %d. A bid of %d remains.",
-						((Order *)peek(asks))->amount, ((Order *)peek(asks))->price, 
-						(((Order *)peek(bids))->amount - ((Order *)peek(asks))->amount));
-				update(bids, (((Order *)peek(bids))->amount - ((Order *)peek(asks))->amount));
+			if(bid->amount > ask->amount) {
+				struct timespec ts;
+				clock_gettime(CLOCK_MONOTONIC, &ts);
+				printf("A partial fill has been executed at %ld! Sold %d shares of AAA at $%d. A bid for %d shares remains.\n",
+						ts.tv_nsec,
+						ask->amount,
+					       	ask->price, 
+						bid->amount - ask->amount
+				);
+				update(bids, bid->amount - ask->amount);
 				pop(asks);
 			} else {
-				printf("A partial fill has been executed! Sold %d shares of AAA at %d. A ask of %d remains.",
-						((Order *)peek(bids))->amount, ((Order *)peek(bids))->price, 
-						(((Order *)peek(asks))->amount - ((Order *)peek(bids))->amount));
-				update(bids, (((Order *)peek(asks))->amount - ((Order *)peek(bids))->amount));
+				struct timespec ts;
+				clock_gettime(CLOCK_MONOTONIC, &ts);
+				printf("A partial fill has been executed at %ld! Sold %d shares of AAA at $%d. A ask of %d shares remains.\n",
+						ts.tv_nsec,
+						bid->amount,
+					       	bid->price, 
+						ask->amount - bid->amount
+				);
+				update(asks, ask->amount - bid->amount);
 				pop(bids);
 			}
 		}
