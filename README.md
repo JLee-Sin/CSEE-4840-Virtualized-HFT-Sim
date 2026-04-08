@@ -110,3 +110,13 @@ During simulation, each executed trade prints the symbol, price, amount, and exe
 ### Golden Model
 
 As an additional component, a golden model of the system is implemented in software so the harness output can be used as a point of comparison for verification.
+
+## Design Notes
+
+### Bit Sizing of orders
+
+Type: 1 bit (Ask or Bid)
+Price: 16 bits (0 to 65536)
+Amount: 16 bits (0 to 65536)
+
+Timestamp is to be designated by the FPGA according to order in which they are received. Values range from 0 to 65536 (2^16).
