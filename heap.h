@@ -4,6 +4,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#define DEFAULT_MODE 1
+#define DEFAULT_ORDERS 100
+#define MAX_PRICE 100
+#define MAX_AMOUNT 10
+#define MAX_ORDERS 1000
+#define SYMBOL "AAA"
 
 typedef void *(*HeapCmpFunc)(const void *a, const void *b);
 
@@ -122,10 +128,10 @@ void *min_cmp(const void *a, const void *b) {
 	if(((Order *)a)->price < ((Order *)b)->price) {
 		return (void *)a;
 	} else if(((Order *)a)->price == ((Order *)b)->price) {
-		if(((Order *)a)->amount < ((Order *)b)->amount) {
+		if(((Order *)a)->timestamp < ((Order *)b)->timestamp) {
 			return (void *)a;
-		} else if(((Order *)a)->amount == ((Order *)b)->amount) {
-			if(((Order *)a)->timestamp < ((Order *)b)->timestamp) {
+		} else if(((Order *)a)->timestamp == ((Order *)b)->timestamp) {
+			if(((Order *)a)->amount > ((Order *)b)->amount) {
 				return (void *)a;
 			} else {
 				return (void *)b;
@@ -142,10 +148,10 @@ void *max_cmp(const void *a, const void *b) {
 	if(((Order *)a)->price > ((Order *)b)->price) {
 		return (void *)a;
 	} else if(((Order *)a)->price == ((Order *)b)->price) {
-		if(((Order *)a)->amount > ((Order *)b)->amount) {
+		if(((Order *)a)->timestamp < ((Order *)b)->timestamp) {
 			return (void *)a;
-		} else if(((Order *)a)->amount == ((Order *)b)->amount) {
-			if(((Order *)a)->timestamp > ((Order *)b)->timestamp) {
+		} else if(((Order *)a)->timestamp == ((Order *)b)->timestamp) {
+			if(((Order *)a)->amount > ((Order *)b)->amount) {
 				return (void *)a;
 			} else {
 				return (void *)b;
@@ -158,9 +164,9 @@ void *max_cmp(const void *a, const void *b) {
 	}
 }
 
-static void check_for_trade(Heap *asks, Heap *bids) {
+static int check_for_trade(Heap *asks, Heap *bids) {
 	if(asks->size == 0 || bids->size == 0) {
-		return;
+		return 0;
 	}
 	
 	Order *bid = (Order *)peek(bids);
@@ -170,38 +176,46 @@ static void check_for_trade(Heap *asks, Heap *bids) {
 		if(bid->amount == ask->amount) {
 			struct timespec ts;
 			clock_gettime(CLOCK_MONOTONIC, &ts);
-			printf("A trade has been executed at %ld! Sold %d shares of AAA at $%d.\n",
+			printf("A trade has been executed at %ld! Sold %d shares of %s at $%d.\n",
 				       ts.tv_nsec,
 				       ask->amount,
+				       SYMBOL,
 				       bid->price
 			);
 			pop(bids);
 			pop(asks);
+			return 1;
 		} else {
 			if(bid->amount > ask->amount) {
 				struct timespec ts;
 				clock_gettime(CLOCK_MONOTONIC, &ts);
-				printf("A partial fill has been executed at %ld! Sold %d shares of AAA at $%d. A bid for %d shares remains.\n",
+				printf("A partial fill has been executed at %ld! Sold %d shares of %s at $%d. A bid for %d shares remains.\n",
 						ts.tv_nsec,
 						ask->amount,
-					       	ask->price, 
+						SYMBOL,
+					       	bid->price, 
 						bid->amount - ask->amount
 				);
 				update(bids, bid->amount - ask->amount);
 				pop(asks);
+				return 1;
 			} else {
 				struct timespec ts;
 				clock_gettime(CLOCK_MONOTONIC, &ts);
-				printf("A partial fill has been executed at %ld! Sold %d shares of AAA at $%d. A ask of %d shares remains.\n",
+				printf("A partial fill has been executed at %ld! Sold %d shares of %s at $%d. A ask of %d shares remains.\n",
 						ts.tv_nsec,
 						bid->amount,
+						SYMBOL,
 					       	bid->price, 
 						ask->amount - bid->amount
 				);
 				update(asks, ask->amount - bid->amount);
 				pop(bids);
+				return 1;
 			}
 		}
+	} else {
+		return 0;
 	}	
 }
 
