@@ -13,11 +13,11 @@ static void automatic_execution(int orders) {
   	for(int i = 0; i < orders; i++) {
     		order_list[i] = create_order(rand_range(1, 100), rand_range(1, 10), rand_range(0, 1));
 		if(order_list[i]->type) {
-			push(asks, &order_list[i]);
+			push(asks, order_list[i]);
 			printf("Ask Submitted; Price: $%d, Amount: %d, Timestamp: %lld\n", order_list[i]->price, order_list[i]->amount, order_list[i]->timestamp);
 			check_for_trade(asks, bids);	
 		} else {
-			push(bids, &order_list[i]);
+			push(bids, order_list[i]);
 			printf("Bid Submitted; Price: $%d, Amount: %d, Timestamp: %lld\n", order_list[i]->price, order_list[i]->amount, order_list[i]->timestamp);	
 			check_for_trade(asks, bids);
 		}

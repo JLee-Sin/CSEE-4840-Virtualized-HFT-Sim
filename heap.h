@@ -41,10 +41,6 @@ Heap *create_heap(int capacity, HeapCmpFunc cmp) {
 	return h;
 }
 
-static void check_for_trade(Heap *asks, Heap *bids) {
-	//TODO: Implement function that peeks at both roots, compares price, executes trade if the price of the root of the bid heap is equal or greater than the root of the ask heap, then amounts are compared for a partial fill if necessary, pops roots of heaps after trade is finished unless partial fill happened, then prints the trade timestamp and offer information
-}
-
 static int rand_range(int min, int max) {
 	return min + rand() % (max - min + 1);
 }
@@ -160,6 +156,53 @@ void *max_cmp(const void *a, const void *b) {
 	} else {
 		return (void *)b;
 	}
+}
+
+static void check_for_trade(Heap *asks, Heap *bids) {
+	if(asks->size == 0 || bids->size == 0) {
+		return;
+	}
+	
+	Order *bid = (Order *)peek(bids);
+	Order *ask = (Order *)peek(asks);
+
+	if(bid->price >= ask->price) {
+		if(bid->amount == ask->amount) {
+			struct timespec ts;
+			clock_gettime(CLOCK_MONOTONIC, &ts);
+			printf("A trade has been executed at %ld! Sold %d shares of AAA at $%d.\n",
+				       ts.tv_nsec,
+				       ask->amount,
+				       bid->price
+			);
+			pop(bids);
+			pop(asks);
+		} else {
+			if(bid->amount > ask->amount) {
+				struct timespec ts;
+				clock_gettime(CLOCK_MONOTONIC, &ts);
+				printf("A partial fill has been executed at %ld! Sold %d shares of AAA at $%d. A bid for %d shares remains.\n",
+						ts.tv_nsec,
+						ask->amount,
+					       	ask->price, 
+						bid->amount - ask->amount
+				);
+				update(bids, bid->amount - ask->amount);
+				pop(asks);
+			} else {
+				struct timespec ts;
+				clock_gettime(CLOCK_MONOTONIC, &ts);
+				printf("A partial fill has been executed at %ld! Sold %d shares of AAA at $%d. A ask of %d shares remains.\n",
+						ts.tv_nsec,
+						bid->amount,
+					       	bid->price, 
+						ask->amount - bid->amount
+				);
+				update(asks, ask->amount - bid->amount);
+				pop(bids);
+			}
+		}
+	}	
 }
 
 #endif
