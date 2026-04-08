@@ -115,8 +115,8 @@ As an additional component, a golden model of the system is implemented in softw
 
 ### Bit Sizing of orders
 
-Type: 1 bit (Ask or Bid)
-Price: 16 bits (0 to 65536)
-Amount: 16 bits (0 to 65536)
+- Type: 1 bit (Ask or Bid)
+- Price: 16 bits (0 to 65536)
+- Amount: 16 bits (0 to 65536)
 
 Timestamp is to be designated by the FPGA according to order in which they are received. Values range from 0 to 65536 (2^16).
