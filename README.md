@@ -118,5 +118,6 @@ As an additional component, a golden model of the system is implemented in softw
 - Type: 1 bit (Ask or Bid)
 - Price: 16 bits (0 to 65536)
 - Amount: 16 bits (0 to 65536)
+- Symbol: 21 bits (3 letters, 7-bits each, defined by ASCII capital letters)
 
-Timestamp is to be designated by the FPGA according to order in which they are received. Values range from 0 to 65536 (2^16).
+Timestamp is to be designated by the FPGA according to order in which they are received. Values range from 0 to 4294967296 (2^32).
