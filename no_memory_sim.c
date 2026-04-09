@@ -14,13 +14,13 @@ static void automatic_execution(int orders) {
     		order_list[i] = create_order(rand_range(1, MAX_PRICE), rand_range(1, MAX_AMOUNT), rand_range(0, 1));
 		if(order_list[i]->type) {
 			push(asks, order_list[i]);
-			printf("Ask Submitted; Price: $%d, Amount: %d, Timestamp: %lld\n", order_list[i]->price, order_list[i]->amount, order_list[i]->timestamp);
+			printf("Ask Submitted; Price: $%d, Amount: %d, Timestamp: %d\n", order_list[i]->price, order_list[i]->amount, order_list[i]->timestamp);
 			if(check_for_trade(asks, bids)) {
 				trades++;
 			}	
 		} else {
 			push(bids, order_list[i]);
-			printf("Bid Submitted; Price: $%d, Amount: %d, Timestamp: %lld\n", order_list[i]->price, order_list[i]->amount, order_list[i]->timestamp);	
+			printf("Bid Submitted; Price: $%d, Amount: %d, Timestamp: %d\n", order_list[i]->price, order_list[i]->amount, order_list[i]->timestamp);	
 			if(check_for_trade(asks, bids)) {
 				trades++;
 			}	
