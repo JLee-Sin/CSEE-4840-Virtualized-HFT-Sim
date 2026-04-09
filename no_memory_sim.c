@@ -11,7 +11,7 @@ static void automatic_execution(int orders) {
 
   	Order **order_list = malloc(sizeof(Order *) * orders);
   	for(int i = 0; i < orders; i++) {
-    		order_list[i] = create_order(rand_range(1, MAX_PRICE), rand_range(1, MAX_AMOUNT), rand_range(0, 1));
+    		order_list[i] = create_order(rand_range(1, MAX_PRICE), rand_range(1, MAX_AMOUNT), rand_range(0, 1), "AAA");
 		if(order_list[i]->type) {
 			push(asks, order_list[i]);
 			printf("Ask Submitted; Price: $%d, Amount: %d, Timestamp: %d\n", order_list[i]->price, order_list[i]->amount, order_list[i]->timestamp);
@@ -66,11 +66,11 @@ static void manual_execution() {
 			printf("Please submit an order in the format (ask/bid), (price), (amount)\n");
 			scanf("%s %d %d", type, &price, &amount);
 			if(strcmp(type, "Ask") == 0 || strcmp(type, "ask") == 0) {
-				order_list[orders] = create_order(price, amount, 1);
+				order_list[orders] = create_order(price, amount, 1, "AAA");
 				push(asks, order_list[orders]);
 				orders++;		
 			} else if(strcmp(type, "Bid") == 0 || strcmp(type, "bid") == 0) {
-				order_list[orders] = create_order(price, amount, 0);
+				order_list[orders] = create_order(price, amount, 0, "AAA");
 				push(bids, order_list[orders]);
 				orders++;
 			} else {

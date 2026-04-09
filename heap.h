@@ -10,7 +10,6 @@
 #define MAX_PRICE 100
 #define MAX_AMOUNT 10
 #define MAX_ORDERS 1000
-#define SYMBOL "AAA"
 
 typedef void *(*HeapCmpFunc)(const void *a, const void *b);
 
@@ -19,6 +18,7 @@ typedef struct {
 	uint32_t timestamp;
 	short amount;
 	int type; //1 = Ask 0 = Bid - This will be 1 bit in hardware
+	char symbol[4]; //3 chars + null terminator
 } Order;
 
 typedef struct {
@@ -28,7 +28,7 @@ typedef struct {
 	HeapCmpFunc cmp;
 } Heap;
 
-Order *create_order(int price, int amount, int type) {
+Order *create_order(int price, int amount, int type, const char *symbol) {
 	Order *o = malloc(sizeof(Order));
 	o->price = price;
 	struct timespec ts;
@@ -36,6 +36,8 @@ Order *create_order(int price, int amount, int type) {
 	o->timestamp = (uint32_t) ts.tv_nsec;
 	o->amount = amount;
 	o->type = type;
+	strncpy(o->symbol, symbol, 3);
+	o->symbol[3] = '\0';
 	return o;
 }
 
@@ -180,7 +182,7 @@ static int check_for_trade(Heap *asks, Heap *bids) {
 			printf("A trade has been executed at %d! Sold %d shares of %s at $%d.\n",
 				       (uint32_t) ts.tv_nsec,
 				       ask->amount,
-				       SYMBOL,
+				       ask->symbol,
 				       bid->price
 			);
 			pop(bids);
@@ -193,7 +195,7 @@ static int check_for_trade(Heap *asks, Heap *bids) {
 				printf("A partial fill has been executed at %d! Sold %d shares of %s at $%d. A bid for %d shares remains.\n",
 						(uint32_t) ts.tv_nsec,
 						ask->amount,
-						SYMBOL,
+						ask->symbol,
 					       	bid->price, 
 						bid->amount - ask->amount
 				);
@@ -206,7 +208,7 @@ static int check_for_trade(Heap *asks, Heap *bids) {
 				printf("A partial fill has been executed at %d! Sold %d shares of %s at $%d. A ask of %d shares remains.\n",
 						(uint32_t) ts.tv_nsec,
 						bid->amount,
-						SYMBOL,
+						ask->symbol,
 					       	bid->price, 
 						ask->amount - bid->amount
 				);
