@@ -73,17 +73,20 @@ typedef struct {
 
 MemoryManager *create_memory_manager(void) {
 	MemoryManager *mm = malloc(sizeof(MemoryManager));
+
 	for (int i = 0; i < MAX_PAGES; i++) {
 		mm->frames[i].frame_index = i;
 		mm->frames[i].owner_symbol = -1;
 		mm->frames[i].node_count = 0;
 	}
+
 	mm->free_bitmap = (MAX_PAGES == 64) ? ~0ULL : (1ULL << MAX_PAGES) - 1;
 	mm->tlb_size = 0;
 	mm->tlb_hits = 0;
 	mm->tlb_misses = 0;
 	mm->hard_rejects = 0;
 	mm->overflow.cnt = 0;
+
 	return mm;
 }
 
@@ -100,6 +103,7 @@ int translate(MemoryManager *mm, int symbol_id, int virtual_page) {
 			return -1;
 		}
 	}
+
 	mm->tlb_misses++;
 	return -1;
 }
@@ -170,10 +174,12 @@ OrderBook *find_or_create_book(Exchange *ex, const char *symbol) {
 			return ex->books[i];
 		}
 	}
+
 	if (ex->cnt >= ex->cap) {
 		ex->cap *= 2;
 		ex->books = realloc(ex->books, sizeof(OrderBook *) * ex->cap);
 	}
+
 	OrderBook *ob = create_order_book(symbol);
 	ex->books[ex->cnt++] = ob;
 	return ob;
@@ -193,26 +199,31 @@ int mem_aware_insert(OrderBook *ob, MemoryManager *mm, Order *o, int sym_id, Sim
 	if (ob->mem.page_count > 0 && ob->mem.nodes_in_curr_page < PAGE_SIZE) { //room in curr page
 		int frame = ob->mem.virtual_pages[ob->mem.page_count - 1];
 		int vpage = sym_id * MAX_PAGES_PER_SYMBOL + ob->mem.page_count - 1;
+
 		if (translate(mm, sym_id, vpage) >= 0) {
 			stats->total_cycles += TLB_HIT_CYCLES;
 		} else {
 			stats->total_cycles += TLB_MISS_CYCLES;
 			tlb_insert(mm, vpage, frame);
-		}								 
+		}
+
 		ob->mem.nodes_in_curr_page++;
 		mm->frames[frame].node_count++;
-		stats->total_writes++;		 
+		stats->total_writes++;
+
 		if (o->type) {
 			push(ob->asks, o);
 		} else {
 			push(ob->bids, o);
 		}
+
 		return 1;
 	}
 
 	
 	if (ob->mem.page_count < MAX_PAGES_PER_SYMBOL) { //new page
 		int frame = allocate_frame(mm, sym_id);
+
 		if (frame >= 0) {
 			ob->mem.virtual_pages[ob->mem.page_count++] = frame;
 			ob->mem.nodes_in_curr_page = 1;
@@ -220,6 +231,7 @@ int mem_aware_insert(OrderBook *ob, MemoryManager *mm, Order *o, int sym_id, Sim
 			stats->total_cycles += TLB_MISS_CYCLES;
 			tlb_insert(mm, sym_id * MAX_PAGES_PER_SYMBOL + ob->mem.page_count - 1, frame);
 			stats->total_writes++;
+
 			if (o->type) {
 				push(ob->asks, o);
 			} else {
@@ -234,34 +246,42 @@ int mem_aware_insert(OrderBook *ob, MemoryManager *mm, Order *o, int sym_id, Sim
 		stats->total_cycles += TLB_MISS_CYCLES + OVERFLOW_PENALTY_CYCLES;
 		stats->overflow_accesses++;
 		stats->total_writes++;
+
 		printf("[OVERFLOW] %s using shared overflow (%d/%d) +%d cycles\n",
 				ob->symbol,
 			       	mm->overflow.cnt,
 			       	OVERFLOW_PAGE_SIZE,
 				TLB_MISS_CYCLES + OVERFLOW_PENALTY_CYCLES);
+
 		if (o->type) {
 			push(ob->asks, o);
 		} else {
 			push(ob->bids, o);
 		}
+
 		return 1;
 	}
 
 	//hard reject
 	mm->hard_rejects++;
 	stats->total_cycles += 1;
+
 	printf("[HARD REJECT] %s order rejected: price=%d amount=%d\n",
 			ob->symbol, o->price, o->amount);
 	return 0;
 }
 
 int check_for_trade_multi(OrderBook *ob, SimStats *stats) {
-	if (ob->asks->size == 0 || ob->bids->size == 0)
+	if (ob->asks->size == 0 || ob->bids->size == 0) {
 		return 0;
+	}
+
 	Order *bid = (Order *) peek(ob->bids);
 	Order *ask = (Order *) peek(ob->asks);
+
 	stats->total_reads += 2;
 	stats->total_cycles += TLB_HIT_CYCLES;
+
 	if (bid->price >= ask->price) {
 		if (bid->amount == ask->amount) {
 			struct timespec ts;
@@ -271,9 +291,11 @@ int check_for_trade_multi(OrderBook *ob, SimStats *stats) {
 				bid->amount,
 			       	ob->symbol,
 			       	bid->price);
+
 			pop(ob->bids);
 			pop(ob->asks);
 			stats->total_trades++;
+
 			return 1;
 		} else if (bid->amount > ask->amount) {
 			struct timespec ts;
@@ -284,10 +306,12 @@ int check_for_trade_multi(OrderBook *ob, SimStats *stats) {
 				       	ob->symbol,
 				       	bid->price,
 					bid->amount - ask->amount);
+
 			update(ob->bids, bid->amount - ask->amount);
 			pop(ob->asks);
 			stats->total_trades++;
 			stats->total_writes++;
+
 			return 1;
 		} else {
 			struct timespec ts;
@@ -298,10 +322,12 @@ int check_for_trade_multi(OrderBook *ob, SimStats *stats) {
 			       	ob->symbol,
 			       	bid->price,
 				ask->amount - bid->amount);
+
 			update(ob->asks, ask->amount - bid->amount);
 			pop(ob->bids);
 			stats->total_trades++;
 			stats->total_writes++;
+
 			return 1;
 		}
 	} else {
@@ -313,14 +339,17 @@ void post_trade_cleanup(MemoryManager *mm, OrderBook *ob) {
 	if (mm->overflow.cnt > 0) {
 		mm->overflow.cnt--;
 	}
+
 	if (ob->mem.nodes_in_curr_page > 0) {
 		ob->mem.nodes_in_curr_page--;
 		if (ob->mem.page_count > 0) {
 			int frame = ob->mem.virtual_pages[ob->mem.page_count - 1];
 			mm->frames[frame].node_count--;
+
 			if (mm->frames[frame].node_count == 0) {
 				free_frame(mm, frame);
 				ob->mem.page_count--;
+
 				if (ob->mem.page_count > 0) {
 					ob->mem.nodes_in_curr_page = PAGE_SIZE;
 				} else {
