@@ -361,7 +361,7 @@ void post_trade_cleanup(MemoryManager *mm, OrderBook *ob) {
 }
 
 void print_sim_stats(Exchange *ex, MemoryManager *mm, SimStats *stats) {
-	printf("Per-Symbol Breakdown:\n");
+	printf("\nPer-Symbol Breakdown:\n");
 	for (int i = 0; i < ex->cnt; i++) {
 		OrderBook *ob = ex->books[i];
 		printf("%s: %d trades, %d open asks, %d open bids, %d pages used\n",
@@ -372,13 +372,13 @@ void print_sim_stats(Exchange *ex, MemoryManager *mm, SimStats *stats) {
 				ob->mem.page_count);
 	}
 
-	printf("Memory:\n");
+	printf("\nMemory:\n");
 	printf("TLB hits:    %d\n", mm->tlb_hits);
 	printf("TLB misses:  %d\n", mm->tlb_misses);
 	printf("TLB hit rate: %.1f%%\n",
 			(mm->tlb_hits + mm->tlb_misses) > 0 ? 100.0 * mm->tlb_hits / (mm->tlb_hits + mm->tlb_misses) : 0.0);
 
-	printf("Overflow:\n");
+	printf("\nOverflow:\n");
 	printf("Accesses:       %d\n", stats->overflow_accesses);
 	printf("Current usage:  %d/%d\n", mm->overflow.cnt, OVERFLOW_PAGE_SIZE);
 	printf("Penalty cycles: %d\n", stats->overflow_accesses * (TLB_MISS_CYCLES + OVERFLOW_PENALTY_CYCLES));
