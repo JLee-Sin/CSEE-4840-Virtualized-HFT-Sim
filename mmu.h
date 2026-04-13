@@ -2,10 +2,11 @@
 #define _MMU_H_
 
 #include "heap.h"
-#define PAGE_SIZE 16
-#define MAX_PAGES 64
-#define MAX_PAGES_PER_SYMBOL 8
-#define OVERFLOW_PAGE_SIZE 16
+#define PAGE_SIZE 64
+#define MAX_PAGES 256
+#define MAX_PAGES_PER_SYMBOL 128
+#define BITMAP_WORDS ((MAX_PAGES + 63) / 64)
+#define OVERFLOW_PAGE_SIZE 64
 #define TLB_HIT_CYCLES 1
 #define TLB_MISS_CYCLES 3
 #define OVERFLOW_PENALTY_CYCLES 2
@@ -29,7 +30,7 @@ typedef struct {
 
 typedef struct {
 	PhysicalFrame frames[MAX_PAGES];
-	uint64_t free_bitmap; //change type to best represent max number of pages
+	uint64_t free_bitmap[BITMAP_WORDS]; //change type to best represent max number of pages
 	TLBEntry tlb[16]; //change number for size of tlb
 	int tlb_size;
 	int tlb_misses;
@@ -69,6 +70,7 @@ typedef struct {
 	int overflow_accesses;
 	int hard_rejects;
 	int hazards;
+	int overflow_max;
 	long long total_cycles;
 } SimStats;
 
@@ -81,7 +83,10 @@ MemoryManager *create_memory_manager(void) {
 		mm->frames[i].node_count = 0;
 	}
 
-	mm->free_bitmap = (MAX_PAGES == 64) ? ~0ULL : (1ULL << MAX_PAGES) - 1;
+	for(int i = 0; i < BITMAP_WORDS; i++) {
+		mm->free_bitmap[i] = ~0ULL;
+	}
+
 	mm->tlb_size = 0;
 	mm->tlb_hits = 0;
 	mm->tlb_misses = 0;
@@ -125,8 +130,10 @@ void tlb_insert(MemoryManager *mm, int virtual_page, int physical_frame) {
 
 int allocate_frame(MemoryManager *mm, int symbol_id) {
 	for (int i = 0; i < MAX_PAGES; i++) {
-		if (mm->free_bitmap & (1ULL << i)) {
-			mm->free_bitmap &= ~(1ULL << i);
+		int word = i/64;
+		int bit  = i%64;
+		if (mm->free_bitmap[word] & (1ULL << bit)) {
+			mm->free_bitmap[word] &= ~(1ULL << bit);
 			mm->frames[i].owner_symbol = symbol_id;
 			mm->frames[i].node_count = 0;
 			return i;
@@ -136,7 +143,9 @@ int allocate_frame(MemoryManager *mm, int symbol_id) {
 }
 
 void free_frame(MemoryManager *mm, int frame_index) {
-	mm->free_bitmap |= (1ULL << frame_index);
+	int word = frame_index/64;
+	int bit  = frame_index%64;
+	mm->free_bitmap[word] |= (1ULL << bit);
 	mm->frames[frame_index].owner_symbol = -1;
 	mm->frames[frame_index].node_count = 0;
 	for (int i = 0; i < mm->tlb_size; i++) {
@@ -258,6 +267,10 @@ int mem_aware_insert(OrderBook *ob, MemoryManager *mm, Order *o, int sym_id, Sim
 			push(ob->asks, o);
 		} else {
 			push(ob->bids, o);
+		}
+
+		if(mm->overflow.cnt > stats->overflow_max) {
+			stats->overflow_max = mm->overflow.cnt;
 		}
 
 		return 1;
@@ -418,6 +431,7 @@ void print_sim_stats(Exchange *ex, MemoryManager *mm, SimStats *stats) {
 	printf("\nOverflow:\n");
 	printf("Accesses:       %d\n", stats->overflow_accesses);
 	printf("Current usage:  %d/%d\n", mm->overflow.cnt, OVERFLOW_PAGE_SIZE);
+	printf("Maximum usage: %d/%d\n", stats->overflow_max, OVERFLOW_PAGE_SIZE);
 	printf("Penalty cycles: %d\n", stats->overflow_accesses * (TLB_MISS_CYCLES + OVERFLOW_PENALTY_CYCLES));
 
 	printf("\nTotals:\n");
