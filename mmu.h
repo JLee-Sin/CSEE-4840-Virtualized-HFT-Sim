@@ -9,6 +9,7 @@
 #define TLB_HIT_CYCLES 1
 #define TLB_MISS_CYCLES 3
 #define OVERFLOW_PENALTY_CYCLES 2
+#define TRIM_TIME 10000
 
 typedef struct {
 	int frame_index;
@@ -357,6 +358,42 @@ void post_trade_cleanup(MemoryManager *mm, OrderBook *ob) {
 				}
 																																}
 																	}
+	}
+}
+
+void trim(Heap *h, MemoryManager *mm, OrderBook *ob) {
+	struct timespec ts;
+	clock_gettime(CLOCK_MONOTONIC, &ts);
+	uint32_t now = (uint32_t) ts.tv_nsec;
+
+	int i = 0;
+	while(i < h->size) {
+		Order *o = (Order *)h->data[i];
+		if(now - o->timestamp > TRIM_TIME && o != (Order *)peek(h)) {
+			h->data[i] = h->data[--h->size];
+			sift_down(h, i);
+			
+			if(ob->mem.nodes_in_curr_page > 0) {
+				ob->mem.nodes_in_curr_page--;
+				if(ob->mem.page_count > 0) {
+					int frame = ob->mem.virtual_pages[ob->mem.page_count - 1];
+					mm->frames[frame].node_count--;
+
+					if(mm->frames[frame].node_count == 0) {
+						free_frame(mm, frame);
+						ob->mem.page_count--;
+
+						if(ob->mem.page_count > 0) {
+							ob->mem.nodes_in_curr_page = PAGE_SIZE;
+						} else { 
+							ob->mem.nodes_in_curr_page = 0;
+						}
+					}
+				}
+			}
+		} else {
+			i++;
+		}
 	}
 }
 

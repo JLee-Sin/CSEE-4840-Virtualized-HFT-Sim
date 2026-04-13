@@ -48,6 +48,9 @@ static void automatic_execution(int orders) {
 				post_trade_cleanup(mm, ob);
 			}
 		}
+
+		trim(ob->asks, mm, ob);
+		trim(ob->bids, mm, ob);
 	}
 
 	print_sim_stats(ex, mm, &stats);
