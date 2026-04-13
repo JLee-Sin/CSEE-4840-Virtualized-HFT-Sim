@@ -121,3 +121,25 @@ As an additional component, a golden model of the system is implemented in softw
 - Symbol: 21 bits (3 letters, 7-bits each, defined by ASCII capital letters)
 
 Timestamp is to be designated by the FPGA according to order in which they are received. Values range from 0 to 4294967296 (2^32).
+
+### Sizing of Memory Elements
+
+Given that each node is 86bits, the widest supported word size by BRAM that wastes the minimal amount of bits is 32:
+
+40-bit words: 86/40 = 2.15 -> 3 words per node (120 bits, 34 unused)
+32-bit words: 86/32 = 2.69 -> 3 words per node (96 bits, 10 unused)
+20-bit words: 86/20 = 4.3  -> 5 words per node (100 bits, 14 wasted)
+
+Each BRAM block holds 256 words, so:
+
+256 words/3 words per node = 85 nodes per block
+
+For cleaner addressing, we'll use 64 nodes per page, which results in 192 words per page. Assuming we reserve 10 blocks for all non-heap based operation, we keep 387 blocks for the heaps. This results in storing a total of 24,768 orders at a given time.
+
+387 pages * 64 nodes per page = 24,768 total nodes
+
+Choosing the closest number for clean address decoding, we can instead use 256 pages, resulting in:
+
+256 pages * 64 nodes per page = 16,384 total nodes
+
+Finally, as a way to manage a dominant symbol and handle out of memory events, we chose to (arbitrarily) limit the maximum number of pages a single symbol can inhabit to be half of this maximum page size or 128 pages and reserve the size a single page for overflow. 
