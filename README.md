@@ -142,4 +142,4 @@ Choosing the closest number for clean address decoding, we can instead use 256 p
 
 256 pages * 64 nodes per page = 16,384 total nodes
 
-Finally, as a way to manage a dominant symbol, we chose to (arbitrarily) limit the maximum number of pages a single symbol can inhabit to be half of this maximum page size or 128 pages.
+Finally, as a way to manage a dominant symbol and handle out of memory events, we chose to (arbitrarily) limit the maximum number of pages a single symbol can inhabit to be half of this maximum page size or 128 pages and reserve the size a single page for overflow. 
