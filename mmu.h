@@ -6,11 +6,11 @@
 #define MAX_PAGES 256
 #define MAX_PAGES_PER_SYMBOL 128
 #define BITMAP_WORDS ((MAX_PAGES + 63) / 64)
-#define OVERFLOW_PAGE_SIZE 64
+#define OVERFLOW_PAGE_SIZE 8
 #define TLB_HIT_CYCLES 1
 #define TLB_MISS_CYCLES 3
 #define OVERFLOW_PENALTY_CYCLES 2
-#define TRIM_TIME 10000
+#define TRIM_TIME 10000 //change trimming to only happen when already reshuffling
 
 typedef struct {
 	int frame_index;

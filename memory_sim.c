@@ -8,8 +8,8 @@ static void automatic_execution(int orders) {
 	MemoryManager *mm = create_memory_manager();
 	SimStats stats = {0};
 
-	const char *symbols[] = {"AAA", "BBB", "CCC", "DDD"};
-	int num_symbols = 4;
+	const char *symbols[] = {"AAA", "BBB", "CCC", "DDD", "EEE", "FFF"};
+	int num_symbols = 6;
 
 	Order **order_list = malloc(sizeof(Order *) * orders);
 	for(int i = 0; i < orders; i++) {
@@ -48,7 +48,8 @@ static void automatic_execution(int orders) {
 				post_trade_cleanup(mm, ob);
 			}
 		}
-
+		
+		//Change this according to mmu.h comment
 		trim(ob->asks, mm, ob);
 		trim(ob->bids, mm, ob);
 	}

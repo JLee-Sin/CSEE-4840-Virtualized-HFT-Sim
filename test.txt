@@ -16,7 +16,7 @@ int symbol3 = Order.symbol[2];
 // symbol 1 will carry validity (MSB)
 //symbol 2 will carry type (ASK/BID, MSB)
 // symbol 3 (MSB) used for flipbit detection
-int valid = 
+ 
 
 iowrite16(price, reg(price_addr))
 iowrite32(timestamp reg(time_addr))
@@ -30,4 +30,14 @@ for each line in data.csv:
     write(symbol1, symbol2, symbol3, price, amount, timestamp)
     waitforACK() // a loop
     
-    
+
+void waitforACK () {
+	do {
+		ioread8(valid);
+	} while (valid == 0);
+
+}
+
+ioread8(valid)
+
+
