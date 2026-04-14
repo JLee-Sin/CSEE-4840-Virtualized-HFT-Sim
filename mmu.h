@@ -7,8 +7,7 @@
 #define MAX_PAGES_PER_SYMBOL 128
 #define BITMAP_WORDS ((MAX_PAGES + 63) / 64)
 #define OVERFLOW_PAGE_SIZE 8
-#define TLB_HIT_CYCLES 1
-#define TLB_MISS_CYCLES 3
+#define PAGE_WALK_CYCLES 3
 #define OVERFLOW_PENALTY_CYCLES 2
 #define TRIM_TIME 10000 //change trimming to only happen when already reshuffling
 
@@ -19,11 +18,6 @@ typedef struct {
 } PhysicalFrame;
 
 typedef struct {
-	int virtual_page;
-	int physical_frame;
-} TLBEntry;
-
-typedef struct {
 	int data[OVERFLOW_PAGE_SIZE];
 	int cnt;
 } OverflowPage;
@@ -31,10 +25,6 @@ typedef struct {
 typedef struct {
 	PhysicalFrame frames[MAX_PAGES];
 	uint64_t free_bitmap[BITMAP_WORDS]; //change type to best represent max number of pages
-	TLBEntry tlb[16]; //change number for size of tlb
-	int tlb_size;
-	int tlb_misses;
-	int tlb_hits;
 	int hard_rejects;
 	OverflowPage overflow;
 } MemoryManager;
@@ -65,8 +55,6 @@ typedef struct {
 	int total_trades;
 	int total_reads;
 	int total_writes;
-	int tlb_misses;
-	int tlb_hits;
 	int overflow_accesses;
 	int hard_rejects;
 	int hazards;
@@ -87,45 +75,18 @@ MemoryManager *create_memory_manager(void) {
 		mm->free_bitmap[i] = ~0ULL;
 	}
 
-	mm->tlb_size = 0;
-	mm->tlb_hits = 0;
-	mm->tlb_misses = 0;
 	mm->hard_rejects = 0;
 	mm->overflow.cnt = 0;
 
 	return mm;
 }
 
-int translate(MemoryManager *mm, int symbol_id, int virtual_page) {
-	for (int i = 0; i < mm->tlb_size; i++) {
-		if (mm->tlb[i].virtual_page == virtual_page) {
-			int frame = mm->tlb[i].physical_frame;
-			if(mm->frames[frame].owner_symbol == symbol_id) {
-				mm->tlb_hits++;
-				return frame;
-			}
-			mm->tlb[i].virtual_page = -1;
-			mm->tlb_misses++;
-			return -1;
-		}
+int translate(OrderBook *ob, int page_index, SimStats *stats) {
+	stats->total_cycles += PAGE_WALK_CYCLES;
+	if(page_index < ob->mem.page_count) {
+		return ob->mem.virtual_pages[page_index];
 	}
-
-	mm->tlb_misses++;
 	return -1;
-}
-
-void tlb_insert(MemoryManager *mm, int virtual_page, int physical_frame) {
-	if (mm->tlb_size < 16) {
-		mm->tlb[mm->tlb_size].virtual_page = virtual_page;
-		mm->tlb[mm->tlb_size].physical_frame = physical_frame;
-		mm->tlb_size++;
-	} else {
-		for (int i = 0; i < 15; i++) {
-			mm->tlb[i] = mm->tlb[i + 1];
-			mm->tlb[15].virtual_page = virtual_page;
-			mm->tlb[15].physical_frame = physical_frame;
-		}
-	}
 }
 
 int allocate_frame(MemoryManager *mm, int symbol_id) {
@@ -142,18 +103,17 @@ int allocate_frame(MemoryManager *mm, int symbol_id) {
 	return -1;
 }
 
-void free_frame(MemoryManager *mm, int frame_index) {
-	int word = frame_index/64;
-	int bit  = frame_index%64;
-	mm->free_bitmap[word] |= (1ULL << bit);
-	mm->frames[frame_index].owner_symbol = -1;
-	mm->frames[frame_index].node_count = 0;
-	for (int i = 0; i < mm->tlb_size; i++) {
-		if (mm->tlb[i].physical_frame == frame_index) {
-			mm->tlb[i].virtual_page = -1;
-			mm->tlb[i].physical_frame = -1;
-		}
+void free_frame(MemoryManager *mm, OrderBook *ob, int page_index, SimStats *stats) {
+	int frame = translate(ob, page_index, stats);
+	if (frame < 0) {
+		return;
 	}
+	
+	int word = frame/64;
+	int bit  = frame%64;
+	mm->free_bitmap[word] |= (1ULL << bit);
+	mm->frames[frame].owner_symbol = -1;
+	mm->frames[frame].node_count = 0;
 }
 
 Exchange *create_exchange(int cap) {
@@ -207,14 +167,9 @@ void free_exchange(Exchange *ex) {
 
 int mem_aware_insert(OrderBook *ob, MemoryManager *mm, Order *o, int sym_id, SimStats *stats) {
 	if (ob->mem.page_count > 0 && ob->mem.nodes_in_curr_page < PAGE_SIZE) { //room in curr page
-		int frame = ob->mem.virtual_pages[ob->mem.page_count - 1];
-		int vpage = sym_id * MAX_PAGES_PER_SYMBOL + ob->mem.page_count - 1;
-
-		if (translate(mm, sym_id, vpage) >= 0) {
-			stats->total_cycles += TLB_HIT_CYCLES;
-		} else {
-			stats->total_cycles += TLB_MISS_CYCLES;
-			tlb_insert(mm, vpage, frame);
+		int frame = translate(ob, ob->mem.page_count-1, stats);
+		if (frame < 0) {
+			return 0;
 		}
 
 		ob->mem.nodes_in_curr_page++;
@@ -238,8 +193,7 @@ int mem_aware_insert(OrderBook *ob, MemoryManager *mm, Order *o, int sym_id, Sim
 			ob->mem.virtual_pages[ob->mem.page_count++] = frame;
 			ob->mem.nodes_in_curr_page = 1;
 			mm->frames[frame].node_count = 1;
-			stats->total_cycles += TLB_MISS_CYCLES;
-			tlb_insert(mm, sym_id * MAX_PAGES_PER_SYMBOL + ob->mem.page_count - 1, frame);
+			stats->total_cycles += PAGE_WALK_CYCLES;
 			stats->total_writes++;
 
 			if (o->type) {
@@ -253,7 +207,7 @@ int mem_aware_insert(OrderBook *ob, MemoryManager *mm, Order *o, int sym_id, Sim
 
 	if (mm->overflow.cnt < OVERFLOW_PAGE_SIZE) { //use overflow page
 		mm->overflow.cnt++;
-		stats->total_cycles += TLB_MISS_CYCLES + OVERFLOW_PENALTY_CYCLES;
+		stats->total_cycles += PAGE_WALK_CYCLES + OVERFLOW_PENALTY_CYCLES;
 		stats->overflow_accesses++;
 		stats->total_writes++;
 
@@ -261,7 +215,7 @@ int mem_aware_insert(OrderBook *ob, MemoryManager *mm, Order *o, int sym_id, Sim
 				ob->symbol,
 			       	mm->overflow.cnt,
 			       	OVERFLOW_PAGE_SIZE,
-				TLB_MISS_CYCLES + OVERFLOW_PENALTY_CYCLES);
+				PAGE_WALK_CYCLES + OVERFLOW_PENALTY_CYCLES);
 
 		if (o->type) {
 			push(ob->asks, o);
@@ -289,12 +243,16 @@ int check_for_trade_multi(OrderBook *ob, SimStats *stats) {
 	if (ob->asks->size == 0 || ob->bids->size == 0) {
 		return 0;
 	}
+	
+	int ask_frame = translate(ob, 0, stats);
+	int bid_frame = translate(ob, 0, stats);
+	(void)ask_frame;
+	(void)bid_frame;
 
 	Order *bid = (Order *) peek(ob->bids);
 	Order *ask = (Order *) peek(ob->asks);
 
 	stats->total_reads += 2;
-	stats->total_cycles += TLB_HIT_CYCLES;
 
 	if (bid->price >= ask->price) {
 		if (bid->amount == ask->amount) {
@@ -349,7 +307,7 @@ int check_for_trade_multi(OrderBook *ob, SimStats *stats) {
 	}
 }
 
-void post_trade_cleanup(MemoryManager *mm, OrderBook *ob) {
+void post_trade_cleanup(MemoryManager *mm, OrderBook *ob, SimStats *stats) {
 	if (mm->overflow.cnt > 0) {
 		mm->overflow.cnt--;
 	}
@@ -357,24 +315,27 @@ void post_trade_cleanup(MemoryManager *mm, OrderBook *ob) {
 	if (ob->mem.nodes_in_curr_page > 0) {
 		ob->mem.nodes_in_curr_page--;
 		if (ob->mem.page_count > 0) {
-			int frame = ob->mem.virtual_pages[ob->mem.page_count - 1];
-			mm->frames[frame].node_count--;
+			int frame = translate(ob, ob->mem.page_count - 1, stats);
 
-			if (mm->frames[frame].node_count == 0) {
-				free_frame(mm, frame);
-				ob->mem.page_count--;
+			if (frame >= 0) {
+				mm->frames[frame].node_count--;
+				
+				if(mm->frames[frame].node_count == 0) {
+					free_frame(mm, ob, ob->mem.page_count-1, stats);
 
-				if (ob->mem.page_count > 0) {
-					ob->mem.nodes_in_curr_page = PAGE_SIZE;
-				} else {
-					ob->mem.nodes_in_curr_page = 0;
-				}
-																																}
-																	}
+					ob->mem.page_count--;
+					if(ob->mem.page_count > 0) {
+						ob->mem.nodes_in_curr_page = PAGE_SIZE;
+					} else {
+						ob->mem.nodes_in_curr_page = 0;
+					}
+				}				
+			}
+		}
 	}
 }
 
-void trim(Heap *h, MemoryManager *mm, OrderBook *ob) {
+void trim(Heap *h, MemoryManager *mm, OrderBook *ob, SimStats *stats) {
 	struct timespec ts;
 	clock_gettime(CLOCK_MONOTONIC, &ts);
 	uint32_t now = (uint32_t) ts.tv_nsec;
@@ -393,7 +354,7 @@ void trim(Heap *h, MemoryManager *mm, OrderBook *ob) {
 					mm->frames[frame].node_count--;
 
 					if(mm->frames[frame].node_count == 0) {
-						free_frame(mm, frame);
+						free_frame(mm, ob, ob->mem.page_count-1, stats);
 						ob->mem.page_count--;
 
 						if(ob->mem.page_count > 0) {
@@ -422,17 +383,11 @@ void print_sim_stats(Exchange *ex, MemoryManager *mm, SimStats *stats) {
 				ob->mem.page_count);
 	}
 
-	printf("\nMemory:\n");
-	printf("TLB hits:    %d\n", mm->tlb_hits);
-	printf("TLB misses:  %d\n", mm->tlb_misses);
-	printf("TLB hit rate: %.1f%%\n",
-			(mm->tlb_hits + mm->tlb_misses) > 0 ? 100.0 * mm->tlb_hits / (mm->tlb_hits + mm->tlb_misses) : 0.0);
-
 	printf("\nOverflow:\n");
 	printf("Accesses:       %d\n", stats->overflow_accesses);
 	printf("Current usage:  %d/%d\n", mm->overflow.cnt, OVERFLOW_PAGE_SIZE);
 	printf("Maximum usage: %d/%d\n", stats->overflow_max, OVERFLOW_PAGE_SIZE);
-	printf("Penalty cycles: %d\n", stats->overflow_accesses * (TLB_MISS_CYCLES + OVERFLOW_PENALTY_CYCLES));
+	printf("Penalty cycles: %d\n", stats->overflow_accesses * (PAGE_WALK_CYCLES + OVERFLOW_PENALTY_CYCLES));
 
 	printf("\nTotals:\n");
 	printf("Hard rejects: %d\n", mm->hard_rejects);

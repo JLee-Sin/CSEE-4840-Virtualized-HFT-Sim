@@ -45,13 +45,13 @@ static void automatic_execution(int orders) {
 		if (mem_aware_insert(ob, mm, order_list[i], sym_id, &stats)) {
 			while(check_for_trade_multi(ob, &stats)) {
 				ob->trades++;
-				post_trade_cleanup(mm, ob);
+				post_trade_cleanup(mm, ob, &stats);
 			}
 		}
 		
 		//Change this according to mmu.h comment
-		trim(ob->asks, mm, ob);
-		trim(ob->bids, mm, ob);
+		trim(ob->asks, mm, ob, &stats);
+		trim(ob->bids, mm, ob, &stats);
 	}
 
 	print_sim_stats(ex, mm, &stats);
