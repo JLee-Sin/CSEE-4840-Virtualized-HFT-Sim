@@ -3,6 +3,27 @@
 #include <string.h>
 #include "mmu.h"
 
+void free_node_memory(struct MemoryManager *mm, struct OrderBook *ob, struct SimStats *stats) {
+	if (ob->mem.nodes_in_curr_page > 0) {
+		ob->mem.nodes_in_curr_page--;
+		if (ob->mem.page_count > 0) {
+			int frame = translate(ob, ob->mem.page_count - 1, stats);
+			if (frame >= 0) {
+				mm->frames[frame].node_count--;
+				if (mm->frames[frame].node_count == 0) {
+					free_frame(mm, ob, ob->mem.page_count - 1, stats);
+					ob->mem.page_count--;
+					if (ob->mem.page_count > 0) {
+						ob->mem.nodes_in_curr_page = PAGE_SIZE;
+					} else {
+						ob->mem.nodes_in_curr_page = 0;
+					}
+				}
+			}
+		}
+	}
+}
+
 static void automatic_execution(int orders) {
 	Exchange *ex = create_exchange(16);
 	MemoryManager *mm = create_memory_manager();
@@ -19,7 +40,7 @@ static void automatic_execution(int orders) {
 			       	rand_range(1, MAX_AMOUNT),
 			       	rand_range(0, 1),
 			       	symbol);
-		OrderBook *ob = find_or_create_book(ex, symbol);
+		OrderBook *ob = find_or_create_book(ex, symbol, mm, &stats);
 		int sym_id = 0;
 		for(int j = 0; j < ex->cnt; j++) {
 			if(strcmp(ex->books[j]->symbol, symbol) == 0) {
@@ -47,11 +68,7 @@ static void automatic_execution(int orders) {
 				ob->trades++;
 				post_trade_cleanup(mm, ob, &stats);
 			}
-		}
-		
-		//Change this according to mmu.h comment
-		trim(ob->asks, mm, ob, &stats);
-		trim(ob->bids, mm, ob, &stats);
+		}	
 	}
 
 	print_sim_stats(ex, mm, &stats);

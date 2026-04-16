@@ -11,8 +11,15 @@
 #define MAX_PRICE 100
 #define MAX_AMOUNT 10
 #define MAX_ORDERS 1000
+#define TRIM_TIME 10000
+
+struct MemoryManager;
+struct OrderBook;
+struct SimStats;
 
 typedef void *(*HeapCmpFunc)(const void *a, const void *b);
+
+void free_node_memory(struct MemoryManager *mm, struct OrderBook *ob, struct SimStats *stats);
 
 typedef struct {
 	short price;
@@ -27,6 +34,9 @@ typedef struct {
 	int size;
 	int capacity;
 	HeapCmpFunc cmp;
+	struct MemoryManager *mm;
+	struct OrderBook *ob;
+	struct SimStats *stats;
 } Heap;
 
 Order *create_order(int price, int amount, int type, const char *symbol) {
@@ -48,6 +58,9 @@ Heap *create_heap(int capacity, HeapCmpFunc cmp) {
 	h->size = 0;
 	h->capacity = capacity;
 	h->cmp = cmp;
+	h->mm = NULL;
+	h->ob = NULL;
+	h->stats = NULL;
 	return h;
 }
 
@@ -73,11 +86,35 @@ static void sift_up(Heap *h, int i) {
 	}
 }
 
+static int is_expired(const Order *o, uint32_t now) {
+		return (now - o->timestamp) > TRIM_TIME;
+}
+
 static void sift_down(Heap *h, int i) {
-	while (1) {
+	struct timespec ts;
+	clock_gettime(CLOCK_MONOTONIC, &ts);
+	uint32_t now = (uint32_t)ts.tv_nsec;
+
+	while (i < h->size) {
+
 		int best = i;
 		int left = 2 * i + 1;
 		int right = 2 * i + 2;
+
+		if (left < h->size && is_expired((Order *)h->data[left], now)) {
+			h->data[left] = h->data[--h->size];
+			if(h->mm) {
+				free_node_memory(h->mm, h->ob, h->stats);
+			}
+			continue;
+		}
+		if (right < h->size && is_expired((Order *)h->data[right], now)) {
+			h->data[right] = h->data[--h->size];
+			if(h->mm) {
+				free_node_memory(h->mm, h->ob, h->stats);
+			}
+			continue;
+		}
 
 		if(left < h->size && h->cmp(h->data[left], h->data[best]) == h->data[left]) {
 			best = left;

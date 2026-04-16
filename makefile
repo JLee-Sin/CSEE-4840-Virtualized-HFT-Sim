@@ -10,7 +10,7 @@ memory_sim.o: memory_sim.c heap.h mmu.h
 
 no_memory_sim: no_memory_sim.o
 
-no_memory_sim.o: no_memory_sim.c heap.h
+no_memory_sim.o: no_memory_sim.c heap.h mmu.h
 
 .PHONY: clean
 clean:

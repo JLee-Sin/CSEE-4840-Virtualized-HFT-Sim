@@ -9,7 +9,6 @@
 #define OVERFLOW_PAGE_SIZE 8
 #define PAGE_WALK_CYCLES 3
 #define OVERFLOW_PENALTY_CYCLES 2
-#define TRIM_TIME 10000 //change trimming to only happen when already reshuffling
 
 typedef struct {
 	int frame_index;
@@ -22,7 +21,7 @@ typedef struct {
 	int cnt;
 } OverflowPage;
 
-typedef struct {
+typedef struct MemoryManager {
 	PhysicalFrame frames[MAX_PAGES];
 	uint64_t free_bitmap[BITMAP_WORDS]; //change type to best represent max number of pages
 	int hard_rejects;
@@ -35,7 +34,7 @@ typedef struct {
 	int nodes_in_curr_page;
 } SymbolMemory;
 
-typedef struct {
+typedef struct OrderBook {
 	char symbol[8];
 	Heap *asks;
 	Heap *bids;
@@ -51,7 +50,7 @@ typedef struct {
 	int cap;
 } Exchange;
 
-typedef struct {
+typedef struct SimStats {
 	int total_trades;
 	int total_reads;
 	int total_writes;
@@ -124,12 +123,18 @@ Exchange *create_exchange(int cap) {
 	return ex;
 }
 
-OrderBook *create_order_book(const char *symbol) {
+OrderBook *create_order_book(const char *symbol, MemoryManager *mm, SimStats *stats) {
 	OrderBook *ob = malloc(sizeof(OrderBook));
 	strncpy(ob->symbol, symbol, 3);
 	ob->symbol[3] = '\0';
 	ob->asks = create_heap(10, min_cmp);
 	ob->bids = create_heap(10, max_cmp);
+	ob->asks->mm = mm;
+	ob->asks->ob = ob;
+	ob->asks->stats = stats;
+	ob->bids->mm = mm;
+	ob->bids->ob = ob;
+	ob->bids->stats = stats;
 	ob->trades = 0;
 	ob->trade_in_progress = 0;
 	ob->insert_pending = 0;
@@ -138,7 +143,7 @@ OrderBook *create_order_book(const char *symbol) {
 	return ob;
 }
 
-OrderBook *find_or_create_book(Exchange *ex, const char *symbol) {
+OrderBook *find_or_create_book(Exchange *ex, const char *symbol, MemoryManager *mm, SimStats *stats) {
 	for (int i = 0; i < ex->cnt; i++) {
 		if (strcmp(ex->books[i]->symbol, symbol) == 0) {
 			return ex->books[i];
@@ -150,7 +155,7 @@ OrderBook *find_or_create_book(Exchange *ex, const char *symbol) {
 		ex->books = realloc(ex->books, sizeof(OrderBook *) * ex->cap);
 	}
 
-	OrderBook *ob = create_order_book(symbol);
+	OrderBook *ob = create_order_book(symbol, mm, stats);
 	ex->books[ex->cnt++] = ob;
 	return ob;
 }
@@ -331,42 +336,6 @@ void post_trade_cleanup(MemoryManager *mm, OrderBook *ob, SimStats *stats) {
 					}
 				}				
 			}
-		}
-	}
-}
-
-void trim(Heap *h, MemoryManager *mm, OrderBook *ob, SimStats *stats) {
-	struct timespec ts;
-	clock_gettime(CLOCK_MONOTONIC, &ts);
-	uint32_t now = (uint32_t) ts.tv_nsec;
-
-	int i = 0;
-	while(i < h->size) {
-		Order *o = (Order *)h->data[i];
-		if(now - o->timestamp > TRIM_TIME && o != (Order *)peek(h)) {
-			h->data[i] = h->data[--h->size];
-			sift_down(h, i);
-			
-			if(ob->mem.nodes_in_curr_page > 0) {
-				ob->mem.nodes_in_curr_page--;
-				if(ob->mem.page_count > 0) {
-					int frame = ob->mem.virtual_pages[ob->mem.page_count - 1];
-					mm->frames[frame].node_count--;
-
-					if(mm->frames[frame].node_count == 0) {
-						free_frame(mm, ob, ob->mem.page_count-1, stats);
-						ob->mem.page_count--;
-
-						if(ob->mem.page_count > 0) {
-							ob->mem.nodes_in_curr_page = PAGE_SIZE;
-						} else { 
-							ob->mem.nodes_in_curr_page = 0;
-						}
-					}
-				}
-			}
-		} else {
-			i++;
 		}
 	}
 }

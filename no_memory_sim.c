@@ -3,6 +3,10 @@
 #include <string.h>
 #include "heap.h"
 
+void free_node_memory(struct MemoryManager *mm, struct OrderBook *ob, struct SimStats *stats) {
+	(void)mm; (void)ob; (void)stats;
+}
+
 static void automatic_execution(int orders) {
   	Heap *asks = create_heap(10, min_cmp);
   	Heap *bids = create_heap(10, max_cmp);
