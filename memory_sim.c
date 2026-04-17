@@ -134,10 +134,10 @@ static void manual_execution() {
 			}
 
 			if (is_ask) {
-				printf("Ask Submitted: %s — Price: $%d, Amount: %d, Timestamp: %u\n",
+				printf("Ask Submitted for %s; Price: $%d, Amount %d, Timestamp: %d\n",
 					symbol, price, amount, order_list[orders]->timestamp);
 			} else {
-				printf("Bid Submitted: %s — Price: $%d, Amount: %d, Timestamp: %u\n",
+				printf("Bid Submitted for %s; Price: $%d, Amount %d, Timestamp: %d\n",
 					symbol, price, amount, order_list[orders]->timestamp);
 			}
 
@@ -168,10 +168,91 @@ static void manual_execution() {
 	free(mm);
 }
 
+static void csv_execution(const char *filename) {
+	Exchange *ex = create_exchange(16);
+	MemoryManager *mm = create_memory_manager();
+	SimStats stats = {0};
+
+	FILE *fp = fopen(filename, "r");
+	if (!fp) {
+		printf("Error: could not open %s\n", filename);
+		return;
+	}
+
+	int orders = 0;
+	Order **order_list = malloc(sizeof(Order *) * MAX_ORDERS);
+	char line[256];
+	char type[16];
+	char symbol[8];
+	int price, amount;
+
+	fgets(line, sizeof(line), fp);
+	if (strstr(line, "ask") == NULL && strstr(line, "bid") == NULL &&
+	    strstr(line, "Ask") == NULL && strstr(line, "Bid") == NULL) {
+	} else {
+		rewind(fp);
+	}
+
+	while (fgets(line, sizeof(line), fp) && orders < MAX_ORDERS) {
+		if (sscanf(line, "%[^,],%[^,],%d,%d", type, symbol, &price, &amount) != 4) {
+			printf("Skipping malformed line: %s", line);
+			continue;
+		}
+
+		symbol[3] = '\0';
+
+		int is_ask = -1;
+		if (strcmp(type, "Ask") == 0 || strcmp(type, "ask") == 0)
+			is_ask = 1;
+		else if (strcmp(type, "Bid") == 0 || strcmp(type, "bid") == 0)
+			is_ask = 0;
+
+		if (is_ask < 0) {
+			printf("Skipping invalid type: %s\n", type);
+			continue;
+		}
+
+		order_list[orders] = create_order(price, amount, is_ask, symbol);
+		OrderBook *ob = find_or_create_book(ex, symbol, mm, &stats);
+
+		int sym_id = 0;
+		for (int j = 0; j < ex->cnt; j++) {
+			if (strcmp(ex->books[j]->symbol, symbol) == 0) {
+				sym_id = j;
+				break;
+			}
+		}
+
+		if (is_ask)
+			printf("Ask Submitted for %s; Price: $%d, Amount %d, Timestamp: %d\n",
+				symbol, price, amount, order_list[orders]->timestamp);
+		else
+			printf("Bid Submitted for %s; Price: $%d, Amount %d, Timestamp: %d\n",
+				symbol, price, amount, order_list[orders]->timestamp);
+
+		if (mem_aware_insert(ob, mm, order_list[orders], sym_id, &stats)) {
+			while (check_for_trade_multi(ob, &stats)) {
+				ob->trades++;
+				post_trade_cleanup(mm, ob, &stats);
+			}
+		}
+		orders++;
+	}
+
+	fclose(fp);
+	print_sim_stats(ex, mm, &stats);
+
+	for (int i = 0; i < orders; i++)
+		free_order(order_list[i]);
+	free(order_list);
+	free_exchange(ex);
+	free(mm);
+	
+}
+
 int main(int argc, char *argv[]) {
 	int mode = DEFAULT_MODE;
         int orders = DEFAULT_ORDERS;
-
 	for(int i = 1; i < argc; i++) {
 		if(strcmp(argv[i], "--mode") == 0) {
 			mode = atoi(argv[++i]);
@@ -180,7 +261,7 @@ int main(int argc, char *argv[]) {
 		}
 	}
 
-	if(mode != 1 && mode != 0) {
+	if(mode != 1 && mode != 0 && mode != 2) {
 		printf("Usage: mode must be either 1 (automatic) or 0 (manual) \n");
 		return 1;
 	}
@@ -190,10 +271,17 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 
-	if(mode) {
+	if(mode == 1) {
 		automatic_execution(orders);
-	} else {
+	} else if(mode == 0) {
 		manual_execution();
+	} else if(mode == 2) {
+		if(argc > 2) {
+			csv_execution(argv[argc - 1]);
+		} else {
+			printf("Usage: supply a .csv file as the last arguement\n");
+			return 1;
+		}
 	}
 
 	return 0;

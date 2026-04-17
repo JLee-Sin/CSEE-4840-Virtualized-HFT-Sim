@@ -205,8 +205,9 @@ int mem_aware_insert(OrderBook *ob, MemoryManager *mm, Order *o, int sym_id, Sim
 				push(ob->asks, o);
 			} else {
 				push(ob->bids, o);
-				return 1;
 			}
+
+			return 1;
 		}
 	}
 
