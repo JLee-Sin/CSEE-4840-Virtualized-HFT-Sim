@@ -82,8 +82,90 @@ static void automatic_execution(int orders) {
 }
 
 static void manual_execution() {
-	//TODO
-	printf("This still needs to be done!");
+	Exchange *ex = create_exchange(16);
+	MemoryManager *mm = create_memory_manager();
+	SimStats stats = {0};
+
+	int orders = 0;
+	char order;
+	int price;
+	int amount;
+	char type[16];
+	char symbol[8];
+	
+	Order **order_list = malloc(sizeof(Order *) * MAX_ORDERS);
+
+	while (1) {
+		if (orders >= MAX_ORDERS) {
+			printf("Maximum number of orders received, ending simulation\n");
+			break;
+		}
+
+		printf("Would you like to submit an order? (Y/N)\n");
+		scanf(" %c", &order);
+		while (getchar() != '\n');
+		if (order == 'Y' || order == 'y') {
+			printf("Format: (ask/bid) (symbol) (price) (amount)\n");
+			scanf("%s %s %d %d", type, symbol, &price, &amount);
+			while (getchar() != '\n');
+			symbol[3] = '\0';
+			int is_ask = -1;
+			
+			if (strcmp(type, "Ask") == 0 || strcmp(type, "ask") == 0) {
+				is_ask = 1;
+			} else if (strcmp(type, "Bid") == 0 || strcmp(type, "bid") == 0) {
+				is_ask = 0;
+			} 
+			
+			if (is_ask < 0) {
+				printf("Please specify ask or bid\n");
+				continue;
+			}
+
+			order_list[orders] = create_order(price, amount, is_ask, symbol);
+			OrderBook *ob = find_or_create_book(ex, symbol, mm, &stats);
+
+			int sym_id = 0;
+			for (int j = 0; j < ex->cnt; j++) {
+				if (strcmp(ex->books[j]->symbol, symbol) == 0) {
+					sym_id = j;
+					break;
+				}
+			}
+
+			if (is_ask) {
+				printf("Ask Submitted: %s — Price: $%d, Amount: %d, Timestamp: %u\n",
+					symbol, price, amount, order_list[orders]->timestamp);
+			} else {
+				printf("Bid Submitted: %s — Price: $%d, Amount: %d, Timestamp: %u\n",
+					symbol, price, amount, order_list[orders]->timestamp);
+			}
+
+			if (mem_aware_insert(ob, mm, order_list[orders], sym_id, &stats)) {
+				while (check_for_trade_multi(ob, &stats)) {
+					ob->trades++;
+					post_trade_cleanup(mm, ob, &stats);
+				}
+			}
+			orders++;
+
+		} else if (order == 'N' || order == 'n') {
+			printf("Ending simulation\n");
+			break;
+		} else {
+			printf("Please submit Y or N\n");
+		}
+	}
+
+	print_sim_stats(ex, mm, &stats);
+
+	for (int i = 0; i < orders; i++) {
+		free_order(order_list[i]);
+	}
+	
+	free(order_list);
+	free_exchange(ex);
+	free(mm);
 }
 
 int main(int argc, char *argv[]) {
