@@ -55,15 +55,6 @@ A shift register where each bit represents a physical page in memory. Each time 
 2. **Overflow pool** — A reserved physical page shared between all symbols, acting as an emergency buffer while trades execute and free up memory.
 3. **Hard reject** — The symbol refuses to accept any more asks or bids when the system has no remaining memory.
 
-### Compaction Passes
-
-Fragmentation (scattering of free pages across memory) causes serial accesses and slows down access times. Compaction passes periodically reorganize the physical layout of each symbol's heap, making pages contiguous again and maintaining parallelization. The compaction process follows these steps:
-
-1. Stall client pipeline
-2. Copy frames
-3. Update page table
-4. Invalidate TLB
-5. Resume pipeline
 
 ---
 
