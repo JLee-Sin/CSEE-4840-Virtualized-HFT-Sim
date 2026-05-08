@@ -99,6 +99,11 @@ module mmu (
     logic first_to_fifo1;
     assign first_to_fifo1 = (fifo_in_count[1] < fifo_in_count[0]);
 
+    logic                     requeue_to_0, requeue_to_1;
+    logic                     new_can_write_fifo0, new_can_write_fifo1;
+    assign new_can_write_fifo0 = !requeue_to_0;
+    assign new_can_write_fifo1 = !requeue_to_1;
+
     logic first_target_has_space, second_target_has_space;
     assign first_target_has_space  = first_to_fifo1
         ? (!fifo_in_full[1] && new_can_write_fifo1)
@@ -109,7 +114,8 @@ module mmu (
 
     logic accept_first, accept_second;
     assign accept_first  = first_winner_found  && first_target_has_space;
-    assign accept_second = second_winner_found && second_target_has_space && accept_first;
+    assign accept_second = second_winner_found && second_target_has_space &&
+                           accept_first;
 
     always_comb begin
         for (int i = 0; i < 8; i++) req_ready[i] = 1'b0;
@@ -141,12 +147,7 @@ module mmu (
                            req_wr[second_winner_idx],
                            req_wdata[second_winner_idx]};
 
-    logic                     requeue_to_0, requeue_to_1;
     logic [IN_FIFO_WIDTH-1:0] requeue_data_0, requeue_data_1;
-
-    logic new_can_write_fifo0, new_can_write_fifo1;
-    assign new_can_write_fifo0 = !requeue_to_0;
-    assign new_can_write_fifo1 = !requeue_to_1;
 
     always_comb begin
         fifo_in_wr_en[0]   = 1'b0;
@@ -183,7 +184,7 @@ module mmu (
         end
     end
 
-    sync_fifo_8 #(.WIDTH(IN_FIFO_WIDTH)) u_in_fifo_0 (
+    fifo #(.WIDTH(IN_FIFO_WIDTH)) u_in_fifo_0 (
         .clk(clk), .rst_n(rst_n),
         .wr_en(fifo_in_wr_en[0]), .wr_data(fifo_in_wr_data[0]),
         .rd_en(fifo_in_rd_en[0]), .rd_data(fifo_in_rd_data[0]),
@@ -191,7 +192,7 @@ module mmu (
         .count(fifo_in_count[0])
     );
 
-    sync_fifo_8 #(.WIDTH(IN_FIFO_WIDTH)) u_in_fifo_1 (
+    fifo #(.WIDTH(IN_FIFO_WIDTH)) u_in_fifo_1 (
         .clk(clk), .rst_n(rst_n),
         .wr_en(fifo_in_wr_en[1]), .wr_data(fifo_in_wr_data[1]),
         .rd_en(fifo_in_rd_en[1]), .rd_data(fifo_in_rd_data[1]),
@@ -245,59 +246,135 @@ module mmu (
         end
     end
 
-    logic [239:0] bitmap;
+    logic [63:0]  page_node_free [240];
+    logic [239:0] page_has_free;
 
-    logic [7:0] ptw0_pa_page, ptw1_pa_page;
-    logic [7:0] ptw0_bitmap_idx, ptw1_bitmap_idx;
-    assign ptw0_pa_page    = ptw0_pa[20:13];
-    assign ptw1_pa_page    = ptw1_pa[20:13];
-    assign ptw0_bitmap_idx = ptw0_pa_page - 8'd16;
-    assign ptw1_bitmap_idx = ptw1_pa_page - 8'd16;
+    logic       ptw0_alloc, ptw1_alloc;
+    logic [7:0] ptw0_alloc_page, ptw1_alloc_page;
+    logic [5:0] ptw0_alloc_node, ptw1_alloc_node;
 
-    logic same_page_collision;
-    assign same_page_collision = ptw0_pa_valid && ptw1_pa_valid &&
-                                 (ptw0_bitmap_idx == ptw1_bitmap_idx);
+    logic [7:0] ptw0_page_select, ptw1_page_select;
+    logic [63:0] ptw0_node_slice, ptw1_node_slice;
 
-    logic ptw1_pa_valid_eff, ptw1_fault_eff;
-    assign ptw1_pa_valid_eff = ptw1_pa_valid && !same_page_collision;
-    assign ptw1_fault_eff    = ptw1_fault    || same_page_collision;
+    assign ptw0_node_slice = page_node_free[ptw0_page_select];
+    assign ptw1_node_slice = page_node_free[ptw1_page_select];
+
+    logic same_alloc_collision;
+    assign same_alloc_collision = ptw0_alloc && ptw1_alloc &&
+                                  (ptw0_alloc_page == ptw1_alloc_page) &&
+                                  (ptw0_alloc_node == ptw1_alloc_node);
+
+    logic ptw1_alloc_eff;
+    assign ptw1_alloc_eff = ptw1_alloc && !same_alloc_collision;
 
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            bitmap <= {240{1'b1}};
+            for (int i = 0; i < 240; i++) begin
+                page_node_free[i] <= {64{1'b1}};
+            end
+            page_has_free <= {240{1'b1}};
         end else begin
-            if (ptw0_pa_valid)
-                bitmap[ptw0_bitmap_idx] <= 1'b0;
-            if (ptw1_pa_valid_eff)
-                bitmap[ptw1_bitmap_idx] <= 1'b0;
+            if (ptw0_alloc) begin
+                page_node_free[ptw0_alloc_page][ptw0_alloc_node] <= 1'b0;
+            end
+            if (ptw1_alloc_eff) begin
+                page_node_free[ptw1_alloc_page][ptw1_alloc_node] <= 1'b0;
+            end
+
+            for (int p = 0; p < 240; p++) begin
+                logic [63:0] post_clear;
+                post_clear = page_node_free[p];
+                if (ptw0_alloc && (ptw0_alloc_page == p[7:0]))
+                    post_clear[ptw0_alloc_node] = 1'b0;
+                if (ptw1_alloc_eff && (ptw1_alloc_page == p[7:0]))
+                    post_clear[ptw1_alloc_node] = 1'b0;
+                page_has_free[p] <= |post_clear;
+            end
         end
     end
 
-    page_table_walker u_ptw0 (
-        .clk           (clk),
-        .rst_n         (rst_n),
-        .va_i          (ptw0_in_va),
-        .va_valid_i    (ptw0_va_valid_in),
-        .bitmap_data_i (bitmap),
-        .pa_o          (ptw0_pa),
-        .bank_id_o     (ptw0_bank_id),
-        .pa_valid_o    (ptw0_pa_valid),
-        .fault_o       (ptw0_fault),
-        .busy_o        (ptw0_busy)
+    logic [13:0] ptw0_pt_raddr, ptw1_pt_raddr;
+    logic [14:0] ptw0_pt_rdata, ptw1_pt_rdata;
+    logic        ptw0_pt_we,    ptw1_pt_we;
+    logic [13:0] ptw0_pt_waddr, ptw1_pt_waddr;
+    logic [14:0] ptw0_pt_wdata, ptw1_pt_wdata;
+
+    logic ptw1_pt_we_eff;
+    assign ptw1_pt_we_eff = ptw1_pt_we && !same_alloc_collision;
+
+    logic [14:0] page_table_copy_a [16384];
+    logic [14:0] page_table_copy_b [16384];
+
+    always_ff @(posedge clk) begin
+        if (ptw0_pt_we) begin
+            page_table_copy_a[ptw0_pt_waddr] <= ptw0_pt_wdata;
+            page_table_copy_b[ptw0_pt_waddr] <= ptw0_pt_wdata;
+        end
+        if (ptw1_pt_we_eff) begin
+            page_table_copy_a[ptw1_pt_waddr] <= ptw1_pt_wdata;
+            page_table_copy_b[ptw1_pt_waddr] <= ptw1_pt_wdata;
+        end
+
+        ptw0_pt_rdata <= page_table_copy_a[ptw0_pt_raddr];
+        ptw1_pt_rdata <= page_table_copy_b[ptw1_pt_raddr];
+    end
+
+    initial begin
+        for (int i = 0; i < 16384; i++) begin
+            page_table_copy_a[i] = 15'd0;
+            page_table_copy_b[i] = 15'd0;
+        end
+    end
+
+    HPTW #(.LOW_FIRST(1'b1)) u_ptw0 (
+        .clk                (clk),
+        .rst_n              (rst_n),
+        .va_valid           (ptw0_va_valid_in),
+        .va                 (ptw0_in_va),
+        .pa_valid           (ptw0_pa_valid),
+        .pa                 (ptw0_pa),
+        .bank_id            (ptw0_bank_id),
+        .fault              (ptw0_fault),
+        .busy               (ptw0_busy),
+        .pt_raddr           (ptw0_pt_raddr),
+        .pt_rdata           (ptw0_pt_rdata),
+        .pt_we              (ptw0_pt_we),
+        .pt_waddr           (ptw0_pt_waddr),
+        .pt_wdata           (ptw0_pt_wdata),
+        .page_has_free      (page_has_free),
+        .node_free_slice    (ptw0_node_slice),
+        .alloc_page_select  (ptw0_page_select),
+        .alloc              (ptw0_alloc),
+        .alloc_page_idx     (ptw0_alloc_page),
+        .alloc_node_idx     (ptw0_alloc_node)
     );
 
-    page_table_walker u_ptw1 (
-        .clk           (clk),
-        .rst_n         (rst_n),
-        .va_i          (ptw1_in_va),
-        .va_valid_i    (ptw1_va_valid_in),
-        .bitmap_data_i (bitmap),
-        .pa_o          (ptw1_pa),
-        .bank_id_o     (ptw1_bank_id),
-        .pa_valid_o    (ptw1_pa_valid),
-        .fault_o       (ptw1_fault),
-        .busy_o        (ptw1_busy)
+    HPTW #(.LOW_FIRST(1'b0)) u_ptw1 (
+        .clk                (clk),
+        .rst_n              (rst_n),
+        .va_valid           (ptw1_va_valid_in),
+        .va                 (ptw1_in_va),
+        .pa_valid           (ptw1_pa_valid),
+        .pa                 (ptw1_pa),
+        .bank_id            (ptw1_bank_id),
+        .fault              (ptw1_fault),
+        .busy               (ptw1_busy),
+        .pt_raddr           (ptw1_pt_raddr),
+        .pt_rdata           (ptw1_pt_rdata),
+        .pt_we              (ptw1_pt_we),
+        .pt_waddr           (ptw1_pt_waddr),
+        .pt_wdata           (ptw1_pt_wdata),
+        .page_has_free      (page_has_free),
+        .node_free_slice    (ptw1_node_slice),
+        .alloc_page_select  (ptw1_page_select),
+        .alloc              (ptw1_alloc),
+        .alloc_page_idx     (ptw1_alloc_page),
+        .alloc_node_idx     (ptw1_alloc_node)
     );
+
+    logic ptw1_pa_valid_eff, ptw1_fault_eff;
+    assign ptw1_pa_valid_eff = ptw1_pa_valid && !same_alloc_collision;
+    assign ptw1_fault_eff    = ptw1_fault    || same_alloc_collision;
 
     logic        arb_ptw0_valid, arb_ptw1_valid;
     logic [31:0] arb_ptw0_va,    arb_ptw1_va;
@@ -331,7 +408,7 @@ module mmu (
     assign requeue_data_0 = {ptw0_pipe_va, ptw0_pipe_wr, ptw0_pipe_wdata};
     assign requeue_data_1 = {ptw1_pipe_va, ptw1_pipe_wr, ptw1_pipe_wdata};
 
-    memory_arbiter u_arbiter (
+    arbiter u_arbiter (
         .clk             (clk),
         .rst_n           (rst_n),
 
@@ -460,8 +537,7 @@ module mmu (
 
 endmodule
 
-
-module sync_fifo_8 #(
+module fifo #(
     parameter int WIDTH = 8
 ) (
     input  logic             clk,
@@ -480,13 +556,15 @@ module sync_fifo_8 #(
     logic [WIDTH-1:0] mem [8];
     logic [2:0]       wr_ptr, rd_ptr;
     logic [3:0]       count_reg;
+    logic             full;
 
     assign empty   = (count_reg == 4'd0);
+    assign full    = (count_reg == 4'd8);
     assign count   = count_reg;
     assign rd_data = mem[rd_ptr];
 
     logic do_write, do_read;
-    assign do_write = wr_en && (count != 4'd8);
+    assign do_write = wr_en && !full;
     assign do_read  = rd_en && !empty;
 
     always_ff @(posedge clk or negedge rst_n) begin

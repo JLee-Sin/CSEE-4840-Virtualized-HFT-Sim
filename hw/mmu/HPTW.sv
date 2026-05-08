@@ -1,149 +1,198 @@
 module HPTW #(
-	parameter PAGE_SIZE 		= 6144,
-	parameter VISIBLE_PAGES 	= 240,
-	parameter RESERVED_PAGES 	= 16,
-	parameter TOTAL_PAGES		= 256,
-	parameter PT_BASE		= 32'h80000000
+    parameter LOW_FIRST = 1'b1
 ) (
-	input logic clk,
-	input logic rst_n,
+    input  logic         clk,
+    input  logic         rst_n,
 
-	input logic [31:0] va,
-	input logic va_valid,
+    input  logic         va_valid,
+    input  logic [31:0]  va,
 
-	input logic [VISIBLE_PAGES-1:0] bitmap_in
+    output logic         pa_valid,
+    output logic [31:0]  pa,
+    output logic [1:0]   bank_id,
+    output logic         fault,
+    output logic         busy,
 
-	output logic [31:0] pa,
-	output logic [1:0] bank_id,
-	output logic valid,
-	output logic fault,
-	output logic busy
+    output logic [13:0]  pt_raddr,
+    input  logic [14:0]  pt_rdata,
+
+    output logic         pt_we,
+    output logic [13:0]  pt_waddr,
+    output logic [14:0]  pt_wdata,
+
+    input  logic [239:0] page_has_free,
+    input  logic [63:0]  node_free_slice,
+
+    output logic [7:0]   alloc_page_select,
+    output logic         alloc,
+    output logic [7:0]   alloc_page_idx,
+    output logic [5:0]   alloc_node_idx
 );
+    logic [13:0] pt_key;
+    assign pt_key = {va[31:29], va[10:0]};
 
-	localparam PAGE_OFFSET_WIDTH 	= $clog2(VISIBLE_PAGES);
-	localparam PAGE_IDX_WIDTH	= VA_WIDTH - PAGE_OFFSET_WIDTH;
+    typedef enum logic [2:0] {
+        IDLE,
+        LOOKUP,
+        ALLOCATE,
+        DONE,
+        FAULT
+    } state_t;
 
-	typedef enum logic [1:0] {
-		IDLE,
-		BUSY,
-		DONE,
-		FAULT
-	} state_t;
+    state_t state, n_state;
 
-	state_t state;
-	state_t n_state;
-	
-	reg [31:0] va_reg;
-	reg [PAGE_IDX_WIDTH-1:0] page_idx;
-	reg [31:0] pa_reg;
-	reg valid_reg;
-	reg fault_reg;
-	reg [31:0] pt_entry;
+    logic [13:0] latched_key;
 
-	logic [1:0] bank_id_reg;
-	logic [1:0] bank_id_latched;
+    logic       lookup_valid_bit;
+    logic [7:0] lookup_page_idx;
+    logic [5:0] lookup_node_idx;
+    assign lookup_valid_bit = pt_rdata[14];
+    assign lookup_page_idx  = pt_rdata[13:6];
+    assign lookup_node_idx  = pt_rdata[5:0];
 
-	reg [PA_IDX_WIDTH-1:0] page_table [0:2**PAGE_IDX_WIDTH-1];
+    logic [7:0] alloc_page;
+    logic       any_page_free;
 
-	wire [PAGE_IDX_WIDTH-1:0] va_page_idx 		= va[31:PAGE_OFFSET_WIDTH];
-	wire [PAGE_OFFSET_WIDTH-1:0] va_page_offset 	= va[PAGE_OFFSET_WIDTH-1:0];
+    always_comb begin
+        alloc_page    = 8'd0;
+        any_page_free = 1'b0;
+        if (LOW_FIRST) begin
+            for (int i = 0; i < 240; i++) begin
+                if (page_has_free[i] && !any_page_free) begin
+                    alloc_page    = i[7:0];
+                    any_page_free = 1'b1;
+                end
+            end
+        end else begin
+            for (int i = 239; i >= 0; i--) begin
+                if (page_has_free[i] && !any_page_free) begin
+                    alloc_page    = i[7:0];
+                    any_page_free = 1'b1;
+                end
+            end
+        end
+    end
 
-	wire [7:0] pa_page_num 	= pa_reg[PA_WIDTH-1:PAGE_OFFSET_WIDTH];
-	
-	wire [7:0] bitmap_idx   = pa_page_num - RESERVED_PAGES;
-	wire is_visible		= (pa_page_num >= RESERVED_PAGES) && (pa_page_num < TOTAL_PAGES);
+    assign alloc_page_select = alloc_page;
 
-	assign pa 	= pa_reg;
-	assign bank_id  = bank_id_latched;
-	assign valid	= valid_reg;
-	assign fault	= fault_reg;
-	assign busy	= (state != IDLE);
+    logic [5:0] alloc_node;
+    logic       any_node_free;
 
-	always_comb begin
-		if(bitmap_idx < 60) begin
-			bank_id_reg = 2'd0;
-		end else if(bitmap_idx < 120) begin
-			bank_id_reg = 2'd1;
-		end else if(bitmap_idx < 180) begin
-			bank_id_reg = 2'd2;
-		end else begin
-			bank_id_reg = 2'd3;
-		end
+    always_comb begin
+        alloc_node    = 6'd0;
+        any_node_free = 1'b0;
+        if (LOW_FIRST) begin
+            for (int j = 0; j < 64; j++) begin
+                if (node_free_slice[j] && !any_node_free) begin
+                    alloc_node    = j[5:0];
+                    any_node_free = 1'b1;
+                end
+            end
+        end else begin
+            for (int j = 63; j >= 0; j--) begin
+                if (node_free_slice[j] && !any_node_free) begin
+                    alloc_node    = j[5:0];
+                    any_node_free = 1'b1;
+                end
+            end
+        end
+    end
+
+    logic any_free_anywhere;
+    assign any_free_anywhere = any_page_free && any_node_free;
+
+    logic [7:0] selected_visible_page;
+    logic [5:0] selected_node;
+    always_comb begin
+        if (state == LOOKUP) begin
+            selected_visible_page = lookup_page_idx;
+            selected_node         = lookup_node_idx;
+        end else begin
+            selected_visible_page = alloc_page;
+            selected_node         = alloc_node;
+        end
+    end
+
+    logic [7:0] selected_pa_page;
+    assign selected_pa_page = selected_visible_page + 8'd16;
+
+    logic [31:0] computed_pa;
+    assign computed_pa = {11'd0, selected_pa_page, 3'd0, selected_node, 4'd0};
+
+    logic [1:0] computed_bank_id;
+    always_comb begin
+        if      (selected_visible_page < 8'd60)  computed_bank_id = 2'd0;
+        else if (selected_visible_page < 8'd120) computed_bank_id = 2'd1;
+        else if (selected_visible_page < 8'd180) computed_bank_id = 2'd2;
+        else                                     computed_bank_id = 2'd3;
+    end
+
+    always_comb begin
+        n_state = state;
+        unique case (state)
+            IDLE:     if (va_valid) begin
+               n_state = LOOKUP;
+	    end
+            LOOKUP:   n_state = lookup_valid_bit ? DONE : ALLOCATE;
+            ALLOCATE: n_state = any_free_anywhere ? DONE : FAULT;
+            DONE:     n_state = IDLE;
+            FAULT:    n_state = IDLE;
+        endcase
+    end
+
+    logic [31:0] pa_reg;
+    logic        pa_valid_reg;
+    logic [1:0]  bank_id_reg;
+    logic        fault_reg;
+
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            state        <= IDLE;
+            latched_key  <= 14'd0;
+            pa_reg       <= 32'd0;
+            pa_valid_reg <= 1'b0;
+            bank_id_reg  <= 2'd0;
+            fault_reg    <= 1'b0;
+        end else begin
+            state        <= n_state;
+            pa_valid_reg <= 1'b0;
+            fault_reg    <= 1'b0;
+
+            if (state == IDLE && va_valid)
+                latched_key <= pt_key;
+
+            if (n_state == DONE) begin
+                pa_reg       <= computed_pa;
+                bank_id_reg  <= computed_bank_id;
+                pa_valid_reg <= 1'b1;
+            end
+
+            if (n_state == FAULT)
+                fault_reg <= 1'b1;
+        end
+    end
+
+    always_comb begin
+        if (state == IDLE && va_valid)begin
+	   pt_raddr = pt_key;
+	end else begin
+           pt_raddr = latched_key;
 	end
+    end
 
-	always_comb @(*) begin
-		n_state = state;
+    assign pt_we    = (state == ALLOCATE) && any_free_anywhere;
+    assign pt_waddr = latched_key;
+    assign pt_wdata = {1'b1, alloc_page, alloc_node};
 
-		case(state)
-			IDLE: begin
-				if(va_valid) begin
-					n_state = BUSY;
-				end
-			end
+    assign alloc          = (state == ALLOCATE) && any_free_anywhere;
+    assign alloc_page_idx = alloc_page;
+    assign alloc_node_idx = alloc_node;
 
-			BUSY: begin
-				if(is_visible && bitmap_in[bitmap_idx]) begin
-					n_state = DONE;
-				end else begin
-					n_state = FAULT;
-				end
-			end
-
-			DONE, FAULT: begin
-				if(va_valid) begin
-					n_state = BUSY;
-				end else begin
-					n_state = IDLE;
-				end
-			end
-		endcase
-	end
-
-	always_ff @(posedge clk or negedge rst_n) begin
-		if (!rst_n) begin
-			state  		<= IDLE;
-			va_reg 		<= 0;
-			page_idx	<= 0;
-			pa_reg		<= 0;
-			valid_reg	<= 1'b0;
-			fault_reg	<= 1'b0;
-		end else begin
-			state <= n_state;
-
-			case(state)
-				IDLE: begin
-					valid_reg <= 1'b0;
-					fault_reg <= 1'b0;
-
-					if(va_valid) begin
-						va_reg 		<= va;
-						page_idx	<= va_page_idx;
-					end
-				end
-
-				BUSY: begin
-					pt_entry 	<= page_table[page_idx];
-					pa_reg		<= page_table[page_idx] + {va_page_offset, 1'b0};
-					bank_id_latched <= bank_id_reg;
-				end
-
-				DONE: begin
-					valid_reg	<= 1'b1;
-					fault_reg	<= 1'b0;
-				end
-
-				FAULT: begin
-					valid_reg	<= 1'b0;
-					fault_reg	<= 1'b1;
-				end
-			endcase
-		end
-	end
-
-	initial begin
-		for(int i = 0; i < 2**PAGE_IDX_WIDTH; i = i + 1) begin
-			page_table[i] = ((i + RESERVED_PAGES) << PAGE_OFFSET_WIDTH);
-		end
-	end
+    assign pa       = pa_reg;
+    assign pa_valid = pa_valid_reg;
+    assign bank_id  = bank_id_reg;
+    assign fault    = fault_reg;
+    assign busy     = (state != IDLE);
 
 endmodule
+
