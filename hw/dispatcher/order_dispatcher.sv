@@ -15,6 +15,7 @@
 module order_dispatcher(
     input logic 	                    clk,
 	input logic 	                    rst_n,
+	input logic  [`SYM_NUM-1:0]         stall,          // Stall signal from each engine
 
 	// Interface with software harness
 	input logic                         sw_begin_write,     // Enables transition to WRITE state
