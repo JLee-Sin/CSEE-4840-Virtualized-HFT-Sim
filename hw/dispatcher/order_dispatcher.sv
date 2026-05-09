@@ -15,6 +15,7 @@
 module order_dispatcher(
     input logic 	                    clk,
 	input logic 	                    rst_n,
+	input logic  [`SYM_NUM-1:0]         stall,          // Stall signal from each engine
 
 	// Interface with software harness
 	input logic  [95:0]                 bus_in,
@@ -84,8 +85,8 @@ always_ff @(posedge clk or negedge rst_n) begin
       // Dispatch: advance only the head pointer 
       if (state == DISPATCH) begin
         for (int s = 0; s < `SYM_NUM; s++) begin
-          // non-empty if head != tail
-          if (fifo_head[s] != fifo_tail[s]) begin
+          // Non-empty if head != tail
+          if ((fifo_head[s] != fifo_tail[s]) && !stall[s]) begin
             fifo_head[s] <= fifo_head[s] + 1'b1;
           end
         end
