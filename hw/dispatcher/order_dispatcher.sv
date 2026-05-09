@@ -24,9 +24,9 @@ module order_dispatcher(
 	input DISPATCH_ORDER                sw_wr_data,         // Order to write to FIFO tails
 	input logic [`SYM_NUM-1:0]          sw_wr_ready,        // Signal verifying data was written to FIFO tails
 
-	// FIFO state
-	output logic                        fifo_empty,         // When all the FIFOs are empty
-	output logic                        fifo_full,          // When all the FIFOs are full 
+	// FIFO state (per symbol/lane)
+	output logic [`SYM_NUM-1:0]         fifo_empty,         // Per FIFO empty signals
+	output logic [`SYM_NUM-1:0]         fifo_full,          // Per FIFO full signals
 	
 	// Communication with Heap Engines
 	input logic  [`SYM_NUM-1:0]         stall,              // Stall signal from each engine
@@ -69,7 +69,7 @@ module order_dispatcher(
         unique case (state)
         IDLE:     next_state = sw_begin_write ?  WRITE:IDLE;
         WRITE:    next_state = sw_begin_dispatch ? DISPATCH:WRITE;
-        DISPATCH: next_state = fifo_empty ? DONE:DISPATCH;
+        DISPATCH: next_state = (&fifo_empty) ? DONE:DISPATCH;
         DONE:     next_state = sw_clear_done ? IDLE : DONE;
         default:; //Handled
         endcase
@@ -120,17 +120,17 @@ module order_dispatcher(
         order_out_valid  = '0;
         order_out        = '0;
     
-        fifo_empty       = 1'b1;
-        fifo_full        = 1'b1;
-    
-        // Compute aggregate empty/full
+        fifo_empty       = '0;
+        fifo_full        = '0;
+
+        // Compute per-FIFO empty/full
         for (int s = 0; s < `SYM_NUM; s++) begin
-            fifo_empty &= (fifo_head[s] == fifo_tail[s]);
-            fifo_full  &= (fifo_tail[s] == `FIFO_SZ);
+            fifo_empty[s] = (fifo_head[s] == fifo_tail[s]);
+            fifo_full[s]  = (fifo_tail[s] == `FIFO_SZ);
         end
     
         // Note that only the DISPATCH state outputs anything
-        if (state = DISPATCH) begin
+        if (state == DISPATCH) begin
             // Issue one order per lane per cycle (if available)
             for (int s = 0; s < `SYM_NUM; s++) begin
                 if (fifo_head[s] != fifo_tail[s]) begin
