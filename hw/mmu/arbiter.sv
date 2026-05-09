@@ -43,6 +43,7 @@ module arbiter (
 	output logic [85:0] mem_wdata_0,
 	input logic  [85:0] mem_rdata_0,
 	input logic 	    mem_rdata_valid_0,
+	input logic	    mem_wdone_0,
 	input logic 	    mem_busy_0,
 
 	output logic [31:0] mem_addr_1,
@@ -51,6 +52,7 @@ module arbiter (
 	output logic [85:0] mem_wdata_1,
 	input logic [85:0]  mem_rdata_1,
 	input logic 	    mem_rdata_valid_1,
+	input logic	    mem_wdone_1,
 	input logic 	    mem_busy_1,
 
 	output logic [31:0] mem_addr_2,
@@ -59,6 +61,7 @@ module arbiter (
 	output logic [85:0] mem_wdata_2,
 	input logic  [85:0] mem_rdata_2,
 	input logic 	    mem_rdata_valid_2,
+	input logic 	    mem_wdone_2,
 	input logic 	    mem_busy_2,
 
 	output logic [31:0] mem_addr_3,
@@ -67,6 +70,7 @@ module arbiter (
 	output logic [85:0] mem_wdata_3,
 	input logic  [85:0] mem_rdata_3,
 	input logic 	    mem_rdata_valid_3,
+	input logic	    mem_wdone_3,
 	input logic 	    mem_busy_3
 );
 
@@ -273,32 +277,32 @@ module arbiter (
             resp_buf_va[3]    <= 32'd0;
             resp_buf_valid[3] <= 1'b0;
         end else begin
-            if (mem_rdata_valid_0 && !resp_buf_valid[0]) begin
-                resp_buf_data[0]  <= mem_rdata_0;
+            if ((mem_rdata_valid_0 || mem_wdone_0) && !resp_buf_valid[0]) begin
+                resp_buf_data[0]  <= mem_rdata_valid_0 ? mem_rdata_0 : 86'd0;
                 resp_buf_va[0]    <= in_flight_va[0];
                 resp_buf_valid[0] <= 1'b1;
             end else if (resp_buf_valid[0]) begin
                 resp_buf_valid[0] <= 1'b0;
             end
 
-            if (mem_rdata_valid_1 && !resp_buf_valid[1]) begin
-                resp_buf_data[1]  <= mem_rdata_1;
+            if ((mem_rdata_valid_1 || mem_wdone_1) && !resp_buf_valid[1]) begin
+                resp_buf_data[1]  <= mem_rdata_valid_1 ? mem_rdata_1 : 86'd0;
                 resp_buf_va[1]    <= in_flight_va[1];
                 resp_buf_valid[1] <= 1'b1;
             end else if (resp_buf_valid[1]) begin
                 resp_buf_valid[1] <= 1'b0;
             end
 
-            if (mem_rdata_valid_2 && !resp_buf_valid[2]) begin
-                resp_buf_data[2]  <= mem_rdata_2;
+            if ((mem_rdata_valid_2 || mem_wdone_2) && !resp_buf_valid[2]) begin
+                resp_buf_data[2]  <= mem_rdata_valid_2 ? mem_rdata_2 : 86'd0;
                 resp_buf_va[2]    <= in_flight_va[2];
                 resp_buf_valid[2] <= 1'b1;
             end else if (resp_buf_valid[2]) begin
                 resp_buf_valid[2] <= 1'b0;
             end
 
-            if (mem_rdata_valid_3 && !resp_buf_valid[3]) begin
-                resp_buf_data[3]  <= mem_rdata_3;
+            if ((mem_rdata_valid_3 || mem_wdone_3) && !resp_buf_valid[3]) begin
+                resp_buf_data[3]  <= mem_rdata_valid_3 ? mem_rdata_3 : 86'd0;
                 resp_buf_va[3]    <= in_flight_va[3];
                 resp_buf_valid[3] <= 1'b1;
             end else if (resp_buf_valid[3]) begin

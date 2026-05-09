@@ -11,6 +11,7 @@ module mem_bank #(
    
     output logic [85:0] mem_rdata,
     output logic 	mem_rdata_valid,
+    output logic	mem_wdone,
     output logic 	mem_busy
 );
     localparam int FIRST_PAGE_FOR_BANK = 16 + BANK_ID * 60;
@@ -148,12 +149,19 @@ module mem_bank #(
         if (!rst_n) begin
             mem_rdata       <= 86'd0;
             mem_rdata_valid <= 1'b0;
+	    mem_wdone	    <= 1'b0;
         end else begin
             mem_rdata_valid <= 1'b0;
-            if (state == DONE_READ && !latched_is_write) begin
+	    mem_wdone	    <= 1'b0;
+            
+	    if (state == DONE_READ && !latched_is_write) begin
                 mem_rdata       <= {active_rdata_a[21:0], read_assemble[63:0]};
                 mem_rdata_valid <= 1'b1;
             end
+
+	    if (state == PHASE_2 && latched_is_write) begin
+		mem_wdone <= 1'b1;
+	    end
         end
     end
 
