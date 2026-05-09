@@ -10,7 +10,7 @@
 //
 // Revision: 05/08/2026
 //////////////////////////////////////////////////////////////////////////////////
-`include "verilog/sys_defs.svh"
+`include "hw/sys_def.svh"
 
 module order_dispatcher(
     input logic 	                    clk,
@@ -39,11 +39,15 @@ module order_dispatcher(
 //  - No to sotre the timestamp since the FIFO
 //////////////////////////////////////////////////////////////////////////////////
 
-// FIFOs (aka Shift Registers)
+// FIFOs (storage)
 //  - fifo[s][i] : entry i of FIFO for symbol/lane s
 DISPATCH_ORDER fifo [`SYM_NUM-1:0][`FIFO_SZ-1:0];
+
+// Pointer width needs to represent values in [0..FIFO_SZ]
 localparam int FIFO_PTR_W = $clog2(`FIFO_SZ + 1);
-logic [FIFO_PTR_W-1:0] fifo_tail [`SYM_NUM-1:0];
+
+logic [FIFO_PTR_W-1:0] fifo_tail [`SYM_NUM-1:0];    // Write index
+logic [FIFO_PTR_W-1:0] fifo_head [`SYM_NUM-1:0];    // Read index
 
 //////////////////////////////////////////////////////////////////////////////////
 // FSM Controller
@@ -69,23 +73,20 @@ end
 always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
       state <= IDLE;
-      for (int s = 0; s < `SYM_NUM; s++) fifo_tail[s] <= '0; // Reset tails
-      
+      for (int s = 0; s < `SYM_NUM; s++) begin
+        fifo_tail[s] <= '0; // write index
+        fifo_head[s] <= '0; // read index
+      end
+
     end else begin
       state <= next_state;
 
-      // Issue heads of FIFOs
+      // Dispatch: advance only the head pointer 
       if (state == DISPATCH) begin
         for (int s = 0; s < `SYM_NUM; s++) begin
-          if (fifo_tail[s] != '0) begin
-            // Shift everything below and at tail 
-            for (int i = 0; i < (`FIFO_SZ-1); i++) begin
-              if (i < (fifo_tail[s]-1))
-                fifo[s][i] <= fifo[s][i+1];
-            end
-
-            // Update tail pointer 
-            fifo_tail[s] <= fifo_tail[s] - 1'b1;
+          // non-empty if head != tail
+          if (fifo_head[s] != fifo_tail[s]) begin
+            fifo_head[s] <= fifo_head[s] + 1'b1;
           end
         end
       end
@@ -99,13 +100,13 @@ always_comb begin
     order_out_valid  = '0;
     order_out        = '0;
 
-    fifo_tail_addr   = '0; // TODO: driven by write path
+    fifo_tail_addr   = '0; // TODO
     fifo_empty       = 1'b1;
     fifo_full        = 1'b1;
 
     // Compute aggregate empty/full
     for (int s = 0; s < `SYM_NUM; s++) begin
-        fifo_empty &= (fifo_tail[s] == '0);
+        fifo_empty &= (fifo_head[s] == fifo_tail[s]);
         fifo_full  &= (fifo_tail[s] == `FIFO_SZ);
     end
 
@@ -121,9 +122,9 @@ always_comb begin
       DISPATCH: begin
         // Issue one order per lane per cycle (if available)
         for (int s = 0; s < `SYM_NUM; s++) begin
-            if (fifo_tail[s] != '0) begin
+            if (fifo_head[s] != fifo_tail[s]) begin
                 order_out_valid[s] = 1'b1;
-                order_out[s]       = fifo[s][0];
+                order_out[s]       = fifo[s][fifo_head[s]];
             end
         end
       end
