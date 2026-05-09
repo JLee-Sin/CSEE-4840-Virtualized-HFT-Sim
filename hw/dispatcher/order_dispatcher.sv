@@ -30,9 +30,9 @@ module order_dispatcher(
 	output logic [`SYM_NUM-1:0]         fifo_full,          // Per FIFO full signals
 	
 	// Communication with Heap Engines
-	input logic  [`SYM_NUM-1:0]         stall,              // Stall signal from each engine
-	output logic [`SYM_NUM-1:0]          order_out_valid,   // High when order_out is a valid order
-	output DISPATCH_ORDER [`SYM_NUM-1:0] order_out          // Order being pop from front of FIFO
+	input  logic [`SYM_NUM-1:0]         order_in_ready,     // Per-lane ready from each engine: high when they can accept order
+	output logic [`SYM_NUM-1:0]         order_out_valid,    // High when order_out holds a real order (not trash)
+	output DISPATCH_ORDER [`SYM_NUM-1:0] order_out          // Order presented to engine (consumed when ready)
 );
 
     //////////////////////////////////////////////////////////////////////////////////
@@ -100,12 +100,12 @@ module order_dispatcher(
                 end
             end
             
-            // Dispatch: advances head pointer 
+            // Dispatch: advance head pointer only when an order is actually accepted:
+            // FIFO non-empty and corresponding engine asserts ready).
             if (state == DISPATCH) begin
                 for (int s = 0; s < `SYM_NUM; s++) begin
-                    // Non-empty if head != tail
-                    if ((fifo_head[s] != fifo_tail[s]) && !stall[s]) begin
-                    fifo_head[s] <= fifo_head[s] + 1'b1;
+                    if ((fifo_head[s] != fifo_tail[s]) && order_in_ready[s]) begin
+                        fifo_head[s] <= fifo_head[s] + 1'b1;
                     end
                 end
             end 
@@ -129,11 +129,10 @@ module order_dispatcher(
             fifo_full[s]  = (fifo_tail[s] == `FIFO_SZ);
         end
     
-        // Note that only the DISPATCH state outputs anything
+        // Only drive orders during DISPATCH, and only when the engine is ready.
         if (state == DISPATCH) begin
-            // Issue one order per lane per cycle (if available)
             for (int s = 0; s < `SYM_NUM; s++) begin
-                if (fifo_head[s] != fifo_tail[s]) begin
+                if ((fifo_head[s] != fifo_tail[s]) && order_in_ready[s]) begin
                     order_out_valid[s] = 1'b1;
                     order_out[s]       = fifo[s][fifo_head[s]];
                 end
