@@ -26,12 +26,13 @@ module mem_bank #(
 
     typedef enum logic [1:0] {
         IDLE,
-        PHASE_01,
+	PHASE_0,
+        PHASE_1,
         PHASE_2,
         DONE_READ
     } state_t;
 
-    state_t state, next_state;
+    state_t state, n_state;
 
     logic        latched_is_write;
     logic [5:0]  latched_page;
@@ -39,15 +40,16 @@ module mem_bank #(
     logic [85:0] latched_wdata;
 
     always_comb begin
-        next_state = state;
+        n_state = state;
         unique case (state)
             IDLE: begin
                 if (mem_re || mem_we)
-                    next_state = PHASE_01;
+                    n_state = PHASE_0;
             end
-            PHASE_01:  next_state = PHASE_2;
-            PHASE_2:   next_state = latched_is_write ? IDLE : DONE_READ;
-            DONE_READ: next_state = IDLE;
+	    PHASE_0:   n_state = PHASE_1;
+            PHASE_1:   n_state = PHASE_2;
+            PHASE_2:   n_state = latched_is_write ? IDLE : DONE_READ;
+            DONE_READ: n_state = IDLE;
         endcase
     end
 
@@ -59,7 +61,7 @@ module mem_bank #(
             latched_node     <= 6'd0;
             latched_wdata    <= 86'd0;
         end else begin
-            state <= next_state;
+            state <= n_state;
             if (state == IDLE && (mem_re || mem_we)) begin
                 latched_is_write <= mem_we;
                 latched_page     <= local_page_idx;
@@ -69,25 +71,29 @@ module mem_bank #(
         end
     end
 
-    logic [7:0]  bram_addr_a, bram_addr_b;
-    logic [31:0] bram_wdata_a, bram_wdata_b;
+    logic [7:0]  bram_waddr, bram_raddr;
+    logic [31:0] bram_wdata;
 
     always_comb begin
-        bram_addr_a  = '0;
-        bram_addr_b  = '0;
-        bram_wdata_a = 32'd0;
-        bram_wdata_b = 32'd0;
+        bram_waddr  = '0;
+        bram_raddr  = '0;
+        bram_wdata  = 32'd0;
 
         unique case (state)
-            PHASE_01: begin
-                bram_addr_a  = {latched_node, 2'd0};
-                bram_addr_b  = {latched_node, 2'd1};
-                bram_wdata_a = latched_wdata[31:0];
-                bram_wdata_b = latched_wdata[63:32];
+	    PHASE_0: begin
+	       bram_waddr  = {latched_node, 2'd0};
+	       bram_raddr  = {latched_node, 2'd0};
+	       bram_wdata  = latched_wdata[31:0];
+	    end
+            PHASE_1: begin
+                bram_waddr = {latched_node, 2'd1};
+                bram_raddr = {latched_node, 2'd1};
+                bram_wdata = latched_wdata[63:32];
             end
             PHASE_2: begin
-                bram_addr_a  = {latched_node, 2'd2};
-                bram_wdata_a = {10'd0, latched_wdata[85:64]};
+                bram_waddr = {latched_node, 2'd2};
+	        bram_raddr = {latched_node, 2'd2};
+                bram_wdata = {10'd0, latched_wdata[85:64]};
             end
             default: ;
         endcase
@@ -99,33 +105,20 @@ module mem_bank #(
     logic [31:0] bram_rdata_b [60];
 
     always_comb begin
-        bram_we_a = '0;
-        bram_we_b = '0;
-        bram_re_a = '0;
-        bram_re_b = '0;
+        bram_we = '0;
+        bram_re = '0;
 
-        unique case (state)
-            PHASE_01: begin
-                if (latched_is_write) begin
-                    bram_we_a[latched_page] = 1'b1;
-                    bram_we_b[latched_page] = 1'b1;
-                end else begin
-                    bram_re_a[latched_page] = 1'b1;
-                    bram_re_b[latched_page] = 1'b1;
-                end
-            end
-            PHASE_2: begin
-                if (latched_is_write) bram_we_a[latched_page] = 1'b1;
-                else                  bram_re_a[latched_page] = 1'b1;
-            end
-            default: ;
-        endcase
+        if(state inside {PHASE_0, PHASE_1, PHASE_2}) begin
+	   if (latched_is_write) begin
+	       bram_we[latched_page] = 1'b1;
+	   end else begin
+	       bram_re[latched_page] = 1'b1; 
+	   end
+	end
     end
 
-    logic [31:0] active_rdata_a;
-    logic [31:0] active_rdata_b;
-    assign active_rdata_a = bram_rdata_a[latched_page];
-    assign active_rdata_b = bram_rdata_b[latched_page];
+    logic [31:0] active_rdata;
+    assign active_rdata = bram_rdata[latched_page];
 
     logic [85:0] read_assemble;
 
@@ -133,9 +126,11 @@ module mem_bank #(
         if (!rst_n) begin
             read_assemble <= 86'd0;
         end else if (!latched_is_write) begin
+	    if (state == PHASE_1) begin
+		read_assemble[31:0] <= active_rdata;
+	    end
             if (state == PHASE_2) begin
-                read_assemble[31:0]  <= active_rdata_a;
-                read_assemble[63:32] <= active_rdata_b;
+                read_assemble[63:32]  <= active_rdata;
             end
             if (state == DONE_READ) begin
                 read_assemble[85:64] <= active_rdata_a[21:0];
@@ -155,7 +150,7 @@ module mem_bank #(
 	    mem_wdone	    <= 1'b0;
             
 	    if (state == DONE_READ && !latched_is_write) begin
-                mem_rdata       <= {active_rdata_a[21:0], read_assemble[63:0]};
+                mem_rdata       <= read_assemble;
                 mem_rdata_valid <= 1'b1;
             end
 
@@ -171,17 +166,12 @@ module mem_bank #(
             bram_dp_256x32 u_bram (
                 .clk     (clk),
 
-                .we_a    (bram_we_a[p]),
-                .re_a    (bram_re_a[p]),
-                .addr_a  (bram_addr_a),
-                .wdata_a (bram_wdata_a),
-                .rdata_a (bram_rdata_a[p]),
-				   
-                .we_b    (bram_we_b[p]),
-                .re_b    (bram_re_b[p]),
-                .addr_b  (bram_addr_b),
-                .wdata_b (bram_wdata_b),
-                .rdata_b (bram_rdata_b[p])
+                .we    (bram_we[p]),
+                .re    (bram_re[p]),
+		.waddr (bram_waddr),
+                .raddr (bram_raddr),
+                .wdata (bram_wdata),
+                .rdata (bram_rdata)
             );
         end
     endgenerate
@@ -192,29 +182,19 @@ endmodule
 module bram_dp_256x32 (
     input  logic        clk,
 
-    input  logic        we_a,
-    input  logic        re_a,
-    input  logic [7:0]  addr_a,
-    input  logic [31:0] wdata_a,
-    output logic [31:0] rdata_a,
-
-    input  logic        we_b,
-    input  logic        re_b,
-    input  logic [7:0]  addr_b,
-    input  logic [31:0] wdata_b,
-    output logic [31:0] rdata_b
+    input  logic        we,
+    input  logic        re,
+    input  logic [7:0]  waddr,
+    input  logic [7:0]  raddr,
+    input  logic [31:0] wdata,
+    output logic [31:0] rdata,
 );
 
     logic [31:0] mem [256];
 
     always_ff @(posedge clk) begin
-        if (we_a) mem[addr_a] <= wdata_a;
-        if (re_a) rdata_a     <= mem[addr_a];
-    end
-
-    always_ff @(posedge clk) begin
-        if (we_b) mem[addr_b] <= wdata_b;
-        if (re_b) rdata_b     <= mem[addr_b];
+        if (we) mem[waddr] <= wdata;
+        if (re) rdata      <= mem[raddr];
     end
 
 endmodule
