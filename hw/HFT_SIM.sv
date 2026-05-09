@@ -1,4 +1,4 @@
-// top.sv - System top-level
+// HFT_SIM.sv - System top-level
 //
 // Wires the full HFT pipeline:
 // includes the following...
@@ -12,30 +12,34 @@
 
 `include "hw/sys_def.svh"
 
-module top #(
+module HFT_SIM #(
     parameter int TRADE_LOG_DEPTH = 1024
 ) (
-    input  logic                                       clk,
-    input  logic                                       rst_n,
+    input  logic                                    clk,
+    input  logic                                    rst_n,
 
-    // Harness to dispatcher (write path; not yet implemented in dispatcher)
-    input  logic [95:0]                                bus_in,
-    output logic [`WORD_WIDTH-1:0]                     fifo_tail_addr,
-    output logic                                       fifo_empty,
-    output logic                                       fifo_full,
-    output logic [1:0]                                 dispatcher_state,
+    // Harness to dispatcher (write path)
+    input  logic                                    chipselect,
+    input  logic                                    write,
+    input  logic                                    read,
+    input  logic [4:0]                              address,
+    input  logic [31:0]                             writedata,
+    output logic [31:0]                             readdata,
+    output logic [`SYM_NUM-1:0]                     fifo_empty,
+    output logic [`SYM_NUM-1:0]                     fifo_full,
+    output logic [1:0]                              dispatcher_state,
 
     // Trade log Signals
-    input  logic                                       trade_log_re,
-    input  logic [$clog2(TRADE_LOG_DEPTH)-1:0]         trade_log_addr,
-    output logic [85:0]                                trade_log_rdata,
-    output logic [$clog2(TRADE_LOG_DEPTH+1)-1:0]       trade_log_count,
-    output logic                                       trade_log_overflow,
-    input  logic                                       trade_log_clear,
+    input  logic                                    trade_log_re,
+    input  logic [$clog2(TRADE_LOG_DEPTH)-1:0]      trade_log_addr,
+    output logic [85:0]                             trade_log_rdata,
+    output logic [$clog2(TRADE_LOG_DEPTH+1)-1:0]    trade_log_count,
+    output logic                                    trade_log_overflow,
+    input  logic                                    trade_log_clear,
 
     // Per-engine status (debug / hazard unit)
-    output logic [13:0]                                bid_size [8],
-    output logic [13:0]                                ask_size [8]
+    output logic [13:0]                             bid_size [8],
+    output logic [13:0]                             ask_size [8]
 );
 
     localparam int N          = 8;
@@ -48,6 +52,14 @@ module top #(
         else        now_ts <= now_ts + 32'd1;
     end
 
+    // Top module wrapper to dispatcher
+    logic                     sw_begin_write;
+    logic                     sw_begin_dispatch;
+    logic                     sw_clear_done;
+    logic [N-1:0]             sw_wr_en;
+    logic [N-1:0]             sw_wr_ready;
+    DISPATCH_ORDER            sw_wr_data [N];
+    
     // Dispatcher to engines bus
     logic                  [N-1:0] order_in_valid;
     logic                  [N-1:0] order_in_ready;
@@ -89,16 +101,26 @@ module top #(
 
     // Order Dispatcher
     order_dispatcher u_dispatcher (
-        .clk             (clk),
-        .rst_n           (rst_n),
-        .stall           (order_in_stall),
-        .bus_in          (bus_in),
-        .fifo_tail_addr  (fifo_tail_addr),
-        .fifo_empty      (fifo_empty),
-        .fifo_full       (fifo_full),
-        .state_out       (dispatcher_state),
-        .order_out_valid (order_in_valid),
-        .order_out       (order_in_data)
+        .clk              (clk),
+        .rst_n            (rst_n),
+
+        // SW harness controls 
+        .sw_begin_write    (sw_begin_write),
+        .sw_begin_dispatch (sw_begin_dispatch),
+        .sw_clear_done     (sw_clear_done),
+        .sw_wr_en          (sw_wr_en),
+        .sw_wr_data        (sw_wr_data),
+        .sw_wr_ready       (sw_wr_ready),
+
+        // FIFO state (per lane)
+        .state_out        (dispatcher_state),
+        .fifo_empty       (fifo_empty),
+        .fifo_full        (fifo_full),
+
+        // Heap Engine communication
+        .stall            (order_in_stall), // For backpressure
+        .order_out_valid  (order_in_valid),
+        .order_out        (order_in_data)
     );
 
     // 8 Symbol Engines (one per symbol slot, ENGINE_ID = 0..7).
