@@ -63,14 +63,7 @@ module HFT_SIM #(
     // Dispatcher to engines bus
     logic                  [N-1:0] order_in_valid;
     logic                  [N-1:0] order_in_ready;
-    logic                  [N-1:0] order_in_stall;
     DISPATCH_ORDER         [N-1:0] order_in_data;
-
-    // Carlos's dispatcher uses an active-high stall signal per lane;
-    // each engine drives an active-high ready, so invert at the boundary.
-    for (genvar i = 0; i < N; i++) begin : g_stall
-        assign order_in_stall[i] = !order_in_ready[i];
-    end
 
     // Engines to MMU ports
     logic                          mmu_req_valid   [N];
@@ -118,7 +111,7 @@ module HFT_SIM #(
         .fifo_full        (fifo_full),
 
         // Heap Engine communication
-        .stall            (order_in_stall), // For backpressure
+        .order_in_ready   (order_in_ready), // Backpressure from engines (ready/valid handshake)
         .order_out_valid  (order_in_valid),
         .order_out        (order_in_data)
     );
