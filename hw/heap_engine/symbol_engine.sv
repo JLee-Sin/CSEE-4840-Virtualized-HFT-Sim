@@ -18,15 +18,29 @@
 //   - Trade egress is one valid/ready handshake per executed trade.
 
 module symbol_engine #(
-    parameter int  ENGINE_ID  = 0,
-    parameter int  NODE_WIDTH = 86
+    parameter int               ENGINE_ID  = 0,
+    parameter int               NODE_WIDTH = 86,
+    parameter logic [20:0]      SYMBOL     =
+        (ENGINE_ID == 0) ? {7'd65, 7'd80, 7'd76} :   // APL  (AAPL)
+        (ENGINE_ID == 1) ? {7'd66, 7'd83, 7'd88} :   // BSX
+        (ENGINE_ID == 2) ? {7'd66, 7'd85, 7'd83} :   // BUS
+        (ENGINE_ID == 3) ? {7'd77, 7'd77, 7'd77} :   // MMM
+        (ENGINE_ID == 4) ? {7'd83, 7'd70, 7'd84} :   // SFT  (MSFT)
+        (ENGINE_ID == 5) ? {7'd66, 7'd85, 7'd88} :   // BUX  (SBUX)
+        (ENGINE_ID == 6) ? {7'd84, 7'd85, 7'd83} :   // TUS
+        (ENGINE_ID == 7) ? {7'd87, 7'd77, 7'd84} :   // WMT
+                           21'd0
 ) (
     input  logic                  clk,
     input  logic                  rst_n,
 
-    // order ingress (from order dispatch)
+    // free-running timestamp counter (shared across all engines by top-level)
+    input  logic [31:0]           now_ts,
+
+    // order ingress (from order dispatch). Payload is a 32-bit DISPATCH_ORDER:
+    // bit[31] = type, [30:15] = price, [14:0] = quantity.
     input  logic                  order_in_valid,
-    input  logic [NODE_WIDTH-1:0] order_in_data,
+    input  logic [31:0]           order_in_data,
     output logic                  order_in_ready,
 
     // trade egress
@@ -49,22 +63,24 @@ module symbol_engine #(
     output logic [13:0]           ask_size_o
 );
 
-    // Node-field helpers (must mirror heap_fsm.sv)
+    // Node-field helpers (must mirror heap_fsm.sv).
+    // MSB-first per the ORDER packed struct in hw/sys_def.svh:
+    //   [85] type, [84:69] price, [68:53] amount, [52:32] symbol, [31:0] ts.
 
     function automatic logic        order_type   (input logic [NODE_WIDTH-1:0] n);
-        order_type = n[0];
+        order_type = n[85];
     endfunction
     function automatic logic [15:0] order_amount (input logic [NODE_WIDTH-1:0] n);
-        order_amount = n[32:17];
+        order_amount = n[68:53];
     endfunction
     function automatic logic [15:0] order_price  (input logic [NODE_WIDTH-1:0] n);
-        order_price = n[16:1];
+        order_price = n[84:69];
     endfunction
     function automatic logic [NODE_WIDTH-1:0] with_amount (
         input logic [NODE_WIDTH-1:0] n,
         input logic [15:0]           new_amt
     );
-        with_amount = {n[NODE_WIDTH-1:33], new_amt, n[16:0]};
+        with_amount = {n[85:69], new_amt, n[52:0]};
     endfunction
 
     // Per-heap virtual-tier buses (muxed onto the single MMU port below)
@@ -155,23 +171,34 @@ module symbol_engine #(
         .virt_resp_reject(ask_virt_resp_reject)
     );
 
-    // Private BRAMs (one per heap, 64 entries by NODE_WIDTH)
+    // Shared private BRAM. The trade controller serializes bid and ask
+    // access, so one port is enough. Address top bit selects the heap:
+    // 0 for bid (lower 64 entries), 1 for ask (upper 64 entries).
 
-    priv_bram #(.WIDTH(NODE_WIDTH)) u_bid_priv (
+    logic                  priv_we, priv_re;
+    logic [6:0]            priv_addr;
+    logic [NODE_WIDTH-1:0] priv_wdata;
+    logic [NODE_WIDTH-1:0] priv_rdata;
+
+    logic ask_active;
+    assign ask_active = ask_priv_we | ask_priv_re;
+
+    assign priv_we    = bid_priv_we | ask_priv_we;
+    assign priv_re    = bid_priv_re | ask_priv_re;
+    assign priv_addr  = ask_active ? {1'b1, ask_priv_addr}
+                                   : {1'b0, bid_priv_addr};
+    assign priv_wdata = ask_active ? ask_priv_wdata : bid_priv_wdata;
+
+    assign bid_priv_rdata = priv_rdata;
+    assign ask_priv_rdata = priv_rdata;
+
+    priv_bram #(.WIDTH(NODE_WIDTH), .DEPTH(128)) u_priv (
         .clk   (clk),
-        .we    (bid_priv_we),
-        .re    (bid_priv_re),
-        .addr  (bid_priv_addr),
-        .wdata (bid_priv_wdata),
-        .rdata (bid_priv_rdata)
-    );
-    priv_bram #(.WIDTH(NODE_WIDTH)) u_ask_priv (
-        .clk   (clk),
-        .we    (ask_priv_we),
-        .re    (ask_priv_re),
-        .addr  (ask_priv_addr),
-        .wdata (ask_priv_wdata),
-        .rdata (ask_priv_rdata)
+        .we    (priv_we),
+        .re    (priv_re),
+        .addr  (priv_addr),
+        .wdata (priv_wdata),
+        .rdata (priv_rdata)
     );
 
     // MMU port mux (single-in-flight, fixed bid > ask priority)
@@ -396,8 +423,15 @@ module symbol_engine #(
             tstate <= tn_state;
 
             if (tstate == T_IDLE && order_in_valid) begin
-                pending_order  <= order_in_data;
-                pending_is_ask <= order_type(order_in_data);
+                // Build the 86-bit in-heap node from the 32-bit dispatched
+                // order plus a sampled timestamp and the engine's symbol.
+                // MSB-first packing matches sys_def.svh's ORDER struct.
+                pending_order <= {order_in_data[31],         // [85]    type
+                                  order_in_data[30:15],      // [84:69] price
+                                  1'b0, order_in_data[14:0], // [68:53] amount (zero-ext)
+                                  SYMBOL,                    // [52:32] symbol
+                                  now_ts};                   // [31:0]  timestamp
+                pending_is_ask <= order_in_data[31];
             end
             if (tstate == T_PEEK_BID_WAIT && bid_cmd_done) bid_root_snap <= bid_root;
             if (tstate == T_PEEK_ASK_WAIT && ask_cmd_done) ask_root_snap <= ask_root;
@@ -429,19 +463,20 @@ module symbol_engine #(
 endmodule
 
 
-// priv_bram - Single-port BRAM, 64 entries by WIDTH bits, one-cycle read latency
+// priv_bram - Single-port BRAM, DEPTH entries by WIDTH bits, one-cycle read latency
 
 module priv_bram #(
-    parameter int WIDTH = 86
+    parameter int WIDTH = 86,
+    parameter int DEPTH = 64
 ) (
-    input  logic             clk,
-    input  logic             we,
-    input  logic             re,
-    input  logic [5:0]       addr,
-    input  logic [WIDTH-1:0] wdata,
-    output logic [WIDTH-1:0] rdata
+    input  logic                     clk,
+    input  logic                     we,
+    input  logic                     re,
+    input  logic [$clog2(DEPTH)-1:0] addr,
+    input  logic [WIDTH-1:0]         wdata,
+    output logic [WIDTH-1:0]         rdata
 );
-    logic [WIDTH-1:0] mem [64];
+    logic [WIDTH-1:0] mem [DEPTH];
 
     always_ff @(posedge clk) begin
         if (we) mem[addr] <= wdata;

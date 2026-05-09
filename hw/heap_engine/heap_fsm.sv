@@ -74,12 +74,13 @@ module heap_fsm #(
     localparam logic [1:0] OP_PEEK   = 2'd2;
     localparam logic [1:0] OP_UPDATE = 2'd3;
 
-    // Node-field layout inside the 86-bit payload:
-    //   [0]      type
-    //   [16:1]   price
-    //   [32:17]  amount
-    //   [53:33]  symbol  (3 x 7-bit ASCII)
-    //   [85:54]  timestamp
+    // Node-field layout inside the 86-bit payload (MSB-first, matches the
+    // ORDER packed struct in hw/sys_def.svh):
+    //   [85]     type
+    //   [84:69]  price
+    //   [68:53]  amount
+    //   [52:32]  symbol  (3 x 7-bit ASCII)
+    //   [31:0]   timestamp
     //
     // Per-register field wires are declared after the working registers
     // below. Keeping the bit selects in continuous-assign land prevents
@@ -186,18 +187,18 @@ module heap_fsm #(
     // Pre-extracted field wires and comparator outputs. Continuous assigns
     // keep the constant bit selects out of the always_* blocks below.
 
-    wire [15:0] cur_price     = cur_node[16:1];
-    wire [15:0] cur_amount    = cur_node[32:17];
-    wire [31:0] cur_ts        = cur_node[85:54];
-    wire [15:0] parent_price  = parent_node[16:1];
-    wire [15:0] parent_amount = parent_node[32:17];
-    wire [31:0] parent_ts     = parent_node[85:54];
-    wire [15:0] left_price    = left_node[16:1];
-    wire [15:0] left_amount   = left_node[32:17];
-    wire [31:0] left_ts       = left_node[85:54];
-    wire [15:0] right_price   = right_node[16:1];
-    wire [15:0] right_amount  = right_node[32:17];
-    wire [31:0] right_ts      = right_node[85:54];
+    wire [15:0] cur_price     = cur_node[84:69];
+    wire [15:0] cur_amount    = cur_node[68:53];
+    wire [31:0] cur_ts        = cur_node[31:0];
+    wire [15:0] parent_price  = parent_node[84:69];
+    wire [15:0] parent_amount = parent_node[68:53];
+    wire [31:0] parent_ts     = parent_node[31:0];
+    wire [15:0] left_price    = left_node[84:69];
+    wire [15:0] left_amount   = left_node[68:53];
+    wire [31:0] left_ts       = left_node[31:0];
+    wire [15:0] right_price   = right_node[84:69];
+    wire [15:0] right_amount  = right_node[68:53];
+    wire [31:0] right_ts      = right_node[31:0];
 
     wire cur_wins_parent = a_wins_fields(cur_price,    cur_ts,    cur_amount,
                                          parent_price, parent_ts, parent_amount);
@@ -210,10 +211,10 @@ module heap_fsm #(
 
     // UPDATE guard: the new node must preserve the root's price + timestamp
     // (heap order is established by those two fields). Mismatch => reject.
-    wire [15:0] root_cache_price = root_cache[16:1];
-    wire [31:0] root_cache_ts    = root_cache[85:54];
-    wire [15:0] cmd_in_price     = cmd_data_in[16:1];
-    wire [31:0] cmd_in_ts        = cmd_data_in[85:54];
+    wire [15:0] root_cache_price = root_cache[84:69];
+    wire [31:0] root_cache_ts    = root_cache[31:0];
+    wire [15:0] cmd_in_price     = cmd_data_in[84:69];
+    wire [31:0] cmd_in_ts        = cmd_data_in[31:0];
     wire        update_keys_ok   = (cmd_in_price == root_cache_price)
                                 && (cmd_in_ts    == root_cache_ts);
 
@@ -284,27 +285,34 @@ module heap_fsm #(
     // WAIT-state completion signals
     //
     // Private read:  one-cycle latency, tracked by a one-cycle delay flop.
-    // Private write: one-cycle latency, treated as committed at the next
-    //                clock edge.
+    // Private write: one-cycle latency, tracked the same way.
     // Virtual read:  completes on virt_resp_valid.
-    // Virtual write: completes when virt_req_valid && virt_req_ready.
+    // Virtual write: completes on virt_resp_valid (the MMU pulses resp_valid
+    //                for both reads and writes; for writes resp_data is 0).
     // virt_retry:    one-cycle pulse asserted when the MMU rejects the
     //                request; the FSM falls back to the matching ISSUE
     //                state to retry on the next cycle.
 
     logic priv_read_done;
+    logic priv_write_done;
     logic virt_read_done;
     logic virt_write_done;
     logic virt_retry;
 
-    logic priv_issue_d1;
+    logic priv_re_d1, priv_we_d1;
     always_ff @(posedge clk or negedge rst_n) begin
-        if (!rst_n) priv_issue_d1 <= 1'b0;
-        else        priv_issue_d1 <= priv_re;
+        if (!rst_n) begin
+            priv_re_d1 <= 1'b0;
+            priv_we_d1 <= 1'b0;
+        end else begin
+            priv_re_d1 <= priv_re;
+            priv_we_d1 <= priv_we;
+        end
     end
-    assign priv_read_done  = priv_issue_d1;
+    assign priv_read_done  = priv_re_d1;
+    assign priv_write_done = priv_we_d1;
     assign virt_read_done  = virt_resp_valid;
-    assign virt_write_done = virt_req_valid && virt_req_wr && virt_req_ready;
+    assign virt_write_done = virt_resp_valid;
     assign virt_retry      = virt_resp_reject;
 
     // Next-state logic
@@ -355,14 +363,21 @@ module heap_fsm #(
                 else if (virt_req_ready)     n_state = S_PUSH_WR_DOWN_WAIT;
             end
             S_PUSH_WR_DOWN_WAIT: begin
-                if (parent_idx == 0) n_state = S_PUSH_WR_FINAL_ISSUE;
-                else                 n_state = S_PUSH_RD_PARENT_ISSUE;
+                if (priv_write_done || virt_write_done) begin
+                    if (parent_idx == 0) n_state = S_PUSH_WR_FINAL_ISSUE;
+                    else                 n_state = S_PUSH_RD_PARENT_ISSUE;
+                end else if (virt_retry) begin
+                    n_state = S_PUSH_WR_DOWN_ISSUE;
+                end
             end
             S_PUSH_WR_FINAL_ISSUE: begin
                 if (mem_target_priv)         n_state = S_PUSH_WR_FINAL_WAIT;
                 else if (virt_req_ready)     n_state = S_PUSH_WR_FINAL_WAIT;
             end
-            S_PUSH_WR_FINAL_WAIT: n_state = S_DONE;
+            S_PUSH_WR_FINAL_WAIT: begin
+                if (priv_write_done || virt_write_done) n_state = S_DONE;
+                else if (virt_retry) n_state = S_PUSH_WR_FINAL_ISSUE;
+            end
 
             // POP
             S_POP_LAUNCH: begin
@@ -418,12 +433,18 @@ module heap_fsm #(
                 if (mem_target_priv)         n_state = S_POP_SIFT_WR_UP_WAIT;
                 else if (virt_req_ready)     n_state = S_POP_SIFT_WR_UP_WAIT;
             end
-            S_POP_SIFT_WR_UP_WAIT:    n_state = S_POP_SIFT_RD_LEFT_ISSUE;
+            S_POP_SIFT_WR_UP_WAIT: begin
+                if (priv_write_done || virt_write_done) n_state = S_POP_SIFT_RD_LEFT_ISSUE;
+                else if (virt_retry) n_state = S_POP_SIFT_WR_UP_ISSUE;
+            end
             S_POP_SIFT_WR_FINAL_ISSUE: begin
                 if (mem_target_priv)         n_state = S_POP_SIFT_WR_FINAL_WAIT;
                 else if (virt_req_ready)     n_state = S_POP_SIFT_WR_FINAL_WAIT;
             end
-            S_POP_SIFT_WR_FINAL_WAIT: n_state = S_DONE;
+            S_POP_SIFT_WR_FINAL_WAIT: begin
+                if (priv_write_done || virt_write_done) n_state = S_DONE;
+                else if (virt_retry) n_state = S_POP_SIFT_WR_FINAL_ISSUE;
+            end
 
             // PEEK
             S_PEEK_RD_ISSUE: begin
@@ -440,7 +461,10 @@ module heap_fsm #(
                 if (mem_target_priv)         n_state = S_UPDATE_WR_WAIT;
                 else if (virt_req_ready)     n_state = S_UPDATE_WR_WAIT;
             end
-            S_UPDATE_WR_WAIT: n_state = S_DONE;
+            S_UPDATE_WR_WAIT: begin
+                if (priv_write_done || virt_write_done) n_state = S_DONE;
+                else if (virt_retry) n_state = S_UPDATE_WR_ISSUE;
+            end
 
             // DONE
             S_DONE: n_state = S_IDLE;
@@ -494,11 +518,11 @@ module heap_fsm #(
                         else                parent_node <= virt_resp_data;
                     end
                 end
-                S_PUSH_WR_DOWN_WAIT: begin
+                S_PUSH_WR_DOWN_WAIT: if (priv_write_done || virt_write_done) begin
                     target_idx <= parent_idx;
                     parent_idx <= (parent_idx == 0) ? '0 : (parent_idx - 1) >> 1;
                 end
-                S_PUSH_WR_FINAL_WAIT: begin
+                S_PUSH_WR_FINAL_WAIT: if (priv_write_done || virt_write_done) begin
                     size <= size + 1'b1;
                     if (target_idx == 0) begin
                         root_cache       <= cur_node;
@@ -553,7 +577,7 @@ module heap_fsm #(
                 S_POP_SIFT_RD_RIGHT_ISSUE: begin
                     if (right_idx >= size) has_right <= 1'b0;
                 end
-                S_POP_SIFT_WR_UP_WAIT: begin
+                S_POP_SIFT_WR_UP_WAIT: if (priv_write_done || virt_write_done) begin
                     if (best == BEST_LEFT) begin
                         target_idx <= left_idx;
                         left_idx   <= (left_idx  << 1) + 1'b1;
@@ -564,7 +588,7 @@ module heap_fsm #(
                         right_idx  <= (right_idx << 1) + 2'd2;
                     end
                 end
-                S_POP_SIFT_WR_FINAL_WAIT: begin
+                S_POP_SIFT_WR_FINAL_WAIT: if (priv_write_done || virt_write_done) begin
                     if (target_idx == 0) begin
                         root_cache       <= cur_node;
                         root_cache_valid <= 1'b1;
@@ -581,7 +605,7 @@ module heap_fsm #(
                 end
 
                 // UPDATE bookkeeping
-                S_UPDATE_WR_WAIT: begin
+                S_UPDATE_WR_WAIT: if (priv_write_done || virt_write_done) begin
                     root_cache       <= saved_op_data;
                     root_cache_valid <= 1'b1;
                 end

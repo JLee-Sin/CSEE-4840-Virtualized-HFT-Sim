@@ -21,8 +21,9 @@ module symbol_engine_tb;
     // DUT-facing signals
 
     logic                  order_in_valid;
-    logic [NODE_WIDTH-1:0] order_in_data;
+    logic [31:0]           order_in_data;   // DISPATCH_ORDER: {type[1], price[16], quantity[15]}
     logic                  order_in_ready;
+    logic [31:0]           now_ts;          // free-running timestamp counter
 
     logic                  trade_out_valid;
     logic [NODE_WIDTH-1:0] trade_out_data;
@@ -44,10 +45,12 @@ module symbol_engine_tb;
 
     symbol_engine #(
         .ENGINE_ID  (0),
-        .NODE_WIDTH (NODE_WIDTH)
+        .NODE_WIDTH (NODE_WIDTH),
+        .SYMBOL     (21'd0)
     ) dut (
         .clk             (clk),
         .rst_n           (rst_n),
+        .now_ts          (now_ts),
         .order_in_valid  (order_in_valid),
         .order_in_data   (order_in_data),
         .order_in_ready  (order_in_ready),
@@ -131,43 +134,39 @@ module symbol_engine_tb;
             trade_count <= trade_count + 1;
             last_trade  <= trade_out_data;
             $display("  [trade] price=%0d amount=%0d (count now %0d)",
-                     trade_out_data[16:1], trade_out_data[32:17], trade_count + 1);
+                     trade_out_data[84:69], trade_out_data[68:53], trade_count + 1);
         end
     end
 
-    // Node helpers (match heap_fsm bit layout)
-
-    function automatic logic [NODE_WIDTH-1:0] build_node (
+    // DISPATCH_ORDER builder: {type[1], price[16], quantity[15]} MSB-first
+    function automatic logic [31:0] build_dispatch (
         input logic [15:0] price,
-        input logic [15:0] amount,
-        input logic        type_bit,    // 0 = bid, 1 = ask
-        input logic [31:0] ts
+        input logic [14:0] amount,
+        input logic        type_bit
     );
-        build_node = {ts, 21'd0, amount, price, type_bit};
+        build_dispatch = {type_bit, price, amount};
     endfunction
 
     function automatic logic [15:0] np (input logic [NODE_WIDTH-1:0] n);
-        np = n[16:1];
+        np = n[84:69];
     endfunction
     function automatic logic [15:0] na (input logic [NODE_WIDTH-1:0] n);
-        na = n[32:17];
+        na = n[68:53];
     endfunction
 
     // Stimulus tasks
 
-    int ts_counter = 32'd1;
-    int errors     = 0;
+    int errors = 0;
 
     task automatic submit_order (
         input logic [15:0] price,
-        input logic [15:0] amount,
+        input logic [15:0] amount,    // upper bit dropped; quantity is 15 bits
         input logic        is_ask
     );
         @(posedge clk);
         while (!order_in_ready) @(posedge clk);
         order_in_valid <= 1'b1;
-        order_in_data  <= build_node(price, amount, is_ask, ts_counter[31:0]);
-        ts_counter++;
+        order_in_data  <= build_dispatch(price, amount[14:0], is_ask);
         @(posedge clk);
         order_in_valid <= 1'b0;
         order_in_data  <= '0;
@@ -188,6 +187,12 @@ module symbol_engine_tb;
 
 
     // Test sequence
+
+    // free-running timestamp counter
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) now_ts <= 32'd0;
+        else        now_ts <= now_ts + 32'd1;
+    end
 
     initial begin
         $display("=== symbol_engine_tb starting ===");

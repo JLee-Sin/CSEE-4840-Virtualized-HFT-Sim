@@ -116,8 +116,13 @@ module heap_fsm_tb;
         end else begin
             virt_resp_valid <= 1'b0;
 
-            if (virt_req_valid && virt_req_wr)
+            if (virt_req_valid && virt_req_wr) begin
                 mmu_mem[mmu_idx(virt_req_va)] <= virt_req_wdata;
+                // Pulse resp_valid one cycle after the write request, mirroring
+                // the real MMU's mem_wdone path. Data is don't-care for writes.
+                virt_resp_valid <= 1'b1;
+                virt_resp_data  <= '0;
+            end
 
             if (virt_req_valid && !virt_req_wr && !rd_pending) begin
                 rd_pending <= 1'b1;
@@ -146,12 +151,12 @@ module heap_fsm_tb;
 
     // Node helpers
     //
-    // Field layout matches heap_fsm:
-    //   [0]      type
-    //   [16:1]   price
-    //   [32:17]  amount
-    //   [53:33]  symbol
-    //   [85:54]  timestamp
+    // MSB-first layout per heap_fsm:
+    //   [85]     type
+    //   [84:69]  price
+    //   [68:53]  amount
+    //   [52:32]  symbol
+    //   [31:0]   timestamp
 
     function automatic logic [NODE_WIDTH-1:0] build_node (
         input logic [15:0] price,
@@ -159,14 +164,14 @@ module heap_fsm_tb;
         input logic        type_bit,
         input logic [31:0] ts
     );
-        build_node = {ts, 21'd0, amount, price, type_bit};
+        build_node = {type_bit, price, amount, 21'd0, ts};
     endfunction
 
     function automatic logic [15:0] node_price_f  (input logic [NODE_WIDTH-1:0] n);
-        node_price_f = n[16:1];
+        node_price_f = n[84:69];
     endfunction
     function automatic logic [15:0] node_amount_f (input logic [NODE_WIDTH-1:0] n);
-        node_amount_f = n[32:17];
+        node_amount_f = n[68:53];
     endfunction
 
     // Stimulus tasks
@@ -216,7 +221,9 @@ module heap_fsm_tb;
     task automatic update_root (input logic [15:0] amount);
         logic [NODE_WIDTH-1:0] root, node, dummy;
         do_cmd(OP_PEEK, '0, root);
-        node = {root[NODE_WIDTH-1:33], amount, root[16:0]};
+        // MSB-first: preserve type+price [85:69] and symbol+ts [52:0],
+        // replace amount [68:53].
+        node = {root[85:69], amount, root[52:0]};
         do_cmd(OP_UPDATE, node, dummy);
     endtask
 
