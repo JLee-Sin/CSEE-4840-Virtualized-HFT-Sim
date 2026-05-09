@@ -177,8 +177,16 @@ module heap_fsm #(
     logic [NODE_WIDTH-1:0] left_node, right_node;
     logic                  has_right;
 
-    logic [NODE_WIDTH-1:0] root_cache;
-    logic                  root_cache_valid;
+    // Top-3 node cache. Stores the last-known values of indices 0, 1, 2
+    // so that the trade controller's PEEK is single-cycle and the first
+    // sift-down step after POP can skip both child reads.
+    logic [NODE_WIDTH-1:0] node_cache       [3];
+    logic [2:0]            node_cache_valid;
+
+    // Aliases for the legacy root_cache* names used by the UPDATE guard
+    // and PEEK output below.
+    wire [NODE_WIDTH-1:0]  root_cache       = node_cache[0];
+    wire                   root_cache_valid = node_cache_valid[0];
 
     logic [NODE_WIDTH-1:0] saved_op_data;
     logic [1:0]            saved_op;
@@ -270,14 +278,28 @@ module heap_fsm #(
     logic mem_target_priv;
     assign mem_target_priv = is_private(mem_idx);
 
+    // Cache hit detection. node_cache covers indices 0..2 only; on a hit
+    // for a read, we skip the BRAM/MMU access entirely and feed the
+    // destination register from the cache in the same cycle.
+    wire mem_idx_cached = (mem_idx == 0) ? node_cache_valid[0] :
+                          (mem_idx == 1) ? node_cache_valid[1] :
+                          (mem_idx == 2) ? node_cache_valid[2] :
+                                           1'b0;
+    wire [NODE_WIDTH-1:0] mem_idx_cache_data =
+                          (mem_idx == 0) ? node_cache[0] :
+                          (mem_idx == 1) ? node_cache[1] :
+                          (mem_idx == 2) ? node_cache[2] :
+                                           '0;
+    wire effective_read = mem_do_read && !mem_idx_cached;
+
     // private interface drivers
-    assign priv_re    = (mem_do_read  && mem_target_priv);
-    assign priv_we    = (mem_do_write && mem_target_priv);
+    assign priv_re    = (effective_read && mem_target_priv);
+    assign priv_we    = (mem_do_write  && mem_target_priv);
     assign priv_addr  = mem_idx[5:0];
     assign priv_wdata = mem_wdata;
 
     // virtual interface drivers
-    assign virt_req_valid = (mem_do_read || mem_do_write) && !mem_target_priv;
+    assign virt_req_valid = (effective_read || mem_do_write) && !mem_target_priv;
     assign virt_req_wr    = mem_do_write && !mem_target_priv;
     assign virt_req_va    = make_va(mem_idx);
     assign virt_req_wdata = mem_wdata;
@@ -347,7 +369,8 @@ module heap_fsm #(
                 else           n_state = S_PUSH_RD_PARENT_ISSUE;
             end
             S_PUSH_RD_PARENT_ISSUE: begin
-                if (mem_target_priv)         n_state = S_PUSH_RD_PARENT_WAIT;
+                if (mem_idx_cached)          n_state = S_PUSH_DECIDE;
+                else if (mem_target_priv)    n_state = S_PUSH_RD_PARENT_WAIT;
                 else if (virt_req_ready)     n_state = S_PUSH_RD_PARENT_WAIT;
             end
             S_PUSH_RD_PARENT_WAIT: begin
@@ -399,7 +422,8 @@ module heap_fsm #(
                 end else if (virt_retry) n_state = S_POP_RD_ROOT_ISSUE;
             end
             S_POP_RD_LAST_ISSUE: begin
-                if (mem_target_priv)         n_state = S_POP_RD_LAST_WAIT;
+                if (mem_idx_cached)          n_state = S_POP_SIFT_RD_LEFT_ISSUE;
+                else if (mem_target_priv)    n_state = S_POP_RD_LAST_WAIT;
                 else if (virt_req_ready)     n_state = S_POP_RD_LAST_WAIT;
             end
             S_POP_RD_LAST_WAIT: begin
@@ -409,6 +433,7 @@ module heap_fsm #(
             end
             S_POP_SIFT_RD_LEFT_ISSUE: begin
                 if (left_idx >= size)        n_state = S_POP_SIFT_WR_FINAL_ISSUE;
+                else if (mem_idx_cached)     n_state = S_POP_SIFT_RD_RIGHT_ISSUE;
                 else if (mem_target_priv)    n_state = S_POP_SIFT_RD_LEFT_WAIT;
                 else if (virt_req_ready)     n_state = S_POP_SIFT_RD_LEFT_WAIT;
             end
@@ -418,6 +443,7 @@ module heap_fsm #(
             end
             S_POP_SIFT_RD_RIGHT_ISSUE: begin
                 if (right_idx >= size)       n_state = S_POP_SIFT_DECIDE;
+                else if (mem_idx_cached)     n_state = S_POP_SIFT_DECIDE;
                 else if (mem_target_priv)    n_state = S_POP_SIFT_RD_RIGHT_WAIT;
                 else if (virt_req_ready)     n_state = S_POP_SIFT_RD_RIGHT_WAIT;
             end
@@ -491,8 +517,8 @@ module heap_fsm #(
             saved_op_data    <= '0;
             saved_op         <= 2'd0;
             popped_root      <= '0;
-            root_cache       <= '0;
-            root_cache_valid <= 1'b0;
+            for (int i = 0; i < 3; i++) node_cache[i] <= '0;
+            node_cache_valid <= 3'b000;
         end else begin
             state <= n_state;
 
@@ -507,11 +533,14 @@ module heap_fsm #(
                     end
                     if (cmd_op == OP_POP) begin
                         target_idx <= '0;
-                        if (root_cache_valid) popped_root <= root_cache;
+                        if (node_cache_valid[0]) popped_root <= node_cache[0];
                     end
                 end
 
                 // PUSH bookkeeping
+                S_PUSH_RD_PARENT_ISSUE: begin
+                    if (mem_idx_cached) parent_node <= mem_idx_cache_data;
+                end
                 S_PUSH_RD_PARENT_WAIT: begin
                     if (priv_read_done || virt_read_done) begin
                         if (priv_read_done) parent_node <= priv_rdata;
@@ -519,36 +548,53 @@ module heap_fsm #(
                     end
                 end
                 S_PUSH_WR_DOWN_WAIT: if (priv_write_done || virt_write_done) begin
+                    // We wrote parent_node down to target_idx; cache it if top-3.
+                    if (target_idx < 3) begin
+                        node_cache[target_idx]       <= parent_node;
+                        node_cache_valid[target_idx] <= 1'b1;
+                    end
                     target_idx <= parent_idx;
                     parent_idx <= (parent_idx == 0) ? '0 : (parent_idx - 1) >> 1;
                 end
                 S_PUSH_WR_FINAL_WAIT: if (priv_write_done || virt_write_done) begin
                     size <= size + 1'b1;
-                    if (target_idx == 0) begin
-                        root_cache       <= cur_node;
-                        root_cache_valid <= 1'b1;
+                    // cur_node now lives at target_idx; cache it if top-3.
+                    if (target_idx < 3) begin
+                        node_cache[target_idx]       <= cur_node;
+                        node_cache_valid[target_idx] <= 1'b1;
                     end
                 end
 
                 // POP bookkeeping
                 S_POP_LAUNCH: begin
-                    // size=1 with cached root jumps straight to S_DONE.
-                    // Do the cleanup that S_POP_RD_LAST_WAIT would have done.
-                    if (size == 1 && root_cache_valid) begin
+                    // size=1 with cached root jumps straight to S_DONE; the
+                    // heap goes empty, drop all cache slots.
+                    if (size == 1 && node_cache_valid[0]) begin
                         size             <= '0;
-                        root_cache_valid <= 1'b0;
+                        node_cache_valid <= 3'b000;
                     end
                 end
                 S_POP_RD_ROOT_WAIT: begin
                     if (priv_read_done || virt_read_done) begin
                         if (priv_read_done) popped_root <= priv_rdata;
                         else                popped_root <= virt_resp_data;
-                        // size=1 uncached jumps to S_DONE after the root read.
                         if (size == 1) begin
                             size             <= '0;
-                            root_cache_valid <= 1'b0;
+                            node_cache_valid <= 3'b000;
                         end
                     end
+                end
+                S_POP_RD_LAST_ISSUE: if (mem_idx_cached) begin
+                    // Last leaf was already in the top-3 cache; do the same
+                    // bookkeeping S_POP_RD_LAST_WAIT would have done.
+                    cur_node            <= mem_idx_cache_data;
+                    target_idx          <= '0;
+                    left_idx            <= 1;
+                    right_idx           <= 2;
+                    size                <= size - 1'b1;
+                    node_cache_valid[0] <= 1'b0;
+                    if (size <= 2) node_cache_valid[1] <= 1'b0;
+                    if (size <= 3) node_cache_valid[2] <= 1'b0;
                 end
                 S_POP_RD_LAST_WAIT: begin
                     if (priv_read_done || virt_read_done) begin
@@ -558,13 +604,29 @@ module heap_fsm #(
                         left_idx         <= 1;
                         right_idx        <= 2;
                         size             <= size - 1'b1;
-                        root_cache_valid <= 1'b0;
+                        // Root is being replaced via the upcoming sift-down.
+                        // Slots 1 and 2 stay valid only if they remain in the
+                        // post-decrement heap.
+                        node_cache_valid[0] <= 1'b0;
+                        if (size <= 2) node_cache_valid[1] <= 1'b0;
+                        if (size <= 3) node_cache_valid[2] <= 1'b0;
                     end
+                end
+                S_POP_SIFT_RD_LEFT_ISSUE: begin
+                    if (left_idx < size && mem_idx_cached)
+                        left_node <= mem_idx_cache_data;
                 end
                 S_POP_SIFT_RD_LEFT_WAIT: begin
                     if (priv_read_done || virt_read_done) begin
                         if (priv_read_done) left_node <= priv_rdata;
                         else                left_node <= virt_resp_data;
+                    end
+                end
+                S_POP_SIFT_RD_RIGHT_ISSUE: begin
+                    if (right_idx >= size) has_right <= 1'b0;
+                    else if (mem_idx_cached) begin
+                        right_node <= mem_idx_cache_data;
+                        has_right  <= 1'b1;
                     end
                 end
                 S_POP_SIFT_RD_RIGHT_WAIT: begin
@@ -574,10 +636,12 @@ module heap_fsm #(
                         has_right <= 1'b1;
                     end
                 end
-                S_POP_SIFT_RD_RIGHT_ISSUE: begin
-                    if (right_idx >= size) has_right <= 1'b0;
-                end
                 S_POP_SIFT_WR_UP_WAIT: if (priv_write_done || virt_write_done) begin
+                    // We wrote (best==LEFT ? left_node : right_node) to target_idx.
+                    if (target_idx < 3) begin
+                        node_cache[target_idx]       <= (best == BEST_LEFT) ? left_node : right_node;
+                        node_cache_valid[target_idx] <= 1'b1;
+                    end
                     if (best == BEST_LEFT) begin
                         target_idx <= left_idx;
                         left_idx   <= (left_idx  << 1) + 1'b1;
@@ -589,25 +653,25 @@ module heap_fsm #(
                     end
                 end
                 S_POP_SIFT_WR_FINAL_WAIT: if (priv_write_done || virt_write_done) begin
-                    if (target_idx == 0) begin
-                        root_cache       <= cur_node;
-                        root_cache_valid <= 1'b1;
+                    if (target_idx < 3) begin
+                        node_cache[target_idx]       <= cur_node;
+                        node_cache_valid[target_idx] <= 1'b1;
                     end
                 end
 
                 // PEEK bookkeeping
                 S_PEEK_RD_WAIT: begin
                     if (priv_read_done || virt_read_done) begin
-                        if (priv_read_done) root_cache <= priv_rdata;
-                        else                root_cache <= virt_resp_data;
-                        root_cache_valid <= 1'b1;
+                        if (priv_read_done) node_cache[0] <= priv_rdata;
+                        else                node_cache[0] <= virt_resp_data;
+                        node_cache_valid[0] <= 1'b1;
                     end
                 end
 
                 // UPDATE bookkeeping
                 S_UPDATE_WR_WAIT: if (priv_write_done || virt_write_done) begin
-                    root_cache       <= saved_op_data;
-                    root_cache_valid <= 1'b1;
+                    node_cache[0]       <= saved_op_data;
+                    node_cache_valid[0] <= 1'b1;
                 end
 
                 default: ;
