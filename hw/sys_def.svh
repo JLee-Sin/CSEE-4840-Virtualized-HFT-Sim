@@ -22,10 +22,23 @@
 `define SYM_NUM 8       // Number of symbols 
 `define FIFO_SZ 1660  // 
 
-// Structs 
-/*
-* Main Order Struct
-*/
+///////////// STRUCTS /////////////
+
+// Control signals from SW 
+typedef struct packed {
+    logic begin_write;      // Enables transition to WRITE state
+    logic begin_dispatch;   // Enables transition to DISPATCH state
+    logic clear_done;       // 
+} CONTROL;
+
+// Status signals from HW
+typedef struct packed {
+    logic [1:0] FSM_STATE;
+    logic all_empty;
+    logic all_full;
+} STATUS;
+
+// Main Order Struct
 typedef struct packed {
     logic        type_;     // Ask (0) or Bid (1)
     logic [15:0] price;     // unsigned int in [0, 65,536]

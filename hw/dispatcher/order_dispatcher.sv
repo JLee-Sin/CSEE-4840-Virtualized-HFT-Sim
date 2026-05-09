@@ -15,20 +15,21 @@
 module order_dispatcher(
     input logic 	                    clk,
 	input logic 	                    rst_n,
-	input logic  [`SYM_NUM-1:0]         stall,          // Stall signal from each engine
 
 	// Interface with software harness
-	input logic  [95:0]                 bus_in,
-	output logic [`WORD_WIDTH-1:0]      fifo_tail_addr, // address (TODO)
+	input logic                         sw_begin_write,     // Enables transition to WRITE state
+	input logic                         sw_begin_dispatch,  // Enables transition to DISPATCH state
+	input logic                         sw_clear_done,      // Enable transition to IDLE after its done
+	input logic [`SYM_NUM-1:0]          sw_wr_en,           // Enable writing to FIFO tails
+	input DISPATCH_ORDER                sw_wr_data,         // Order to write to FIFO tails
+	input logic [`SYM_NUM-1:0]          sw_wr_ready,        // Signal verifying data was written to FIFO tails
 
 	// FIFO state
 	output logic                        fifo_empty,     // When all the FIFOs are filled
 	output logic                        fifo_full,      // When all the FIFOs are empty (tail = head)
-
-	// Dispatcher state
-	output logic [1:0]                  state_out,
 	
-	// Output to Heap Engines
+	// Communication with Heap Engines
+	input logic  [`SYM_NUM-1:0]         stall,          // Stall signal from each engine
 	output logic [`SYM_NUM-1:0]          order_out_valid,    // High when order_out is a valid order
 	output DISPATCH_ORDER [`SYM_NUM-1:0] order_out          // Order being pop from front of FIFO
 );
@@ -55,44 +56,62 @@ logic [FIFO_PTR_W-1:0] fifo_head [`SYM_NUM-1:0];    // Read index
 //////////////////////////////////////////////////////////////////////////////////
 
 DISPATCH_STATE state, next_state;
+assign state_out = state;
 
 // Next State Logic 
 always_comb begin
     // Defaults
     next_state = IDLE;
 
+    // Transitions 
+    // Note: tansitions to DISPATCH is SW controll to enable dipatching
+    // when FIFOS have less than FIFO_SZ orders.  
     unique case (state)
-      IDLE: ; // Wait for signal from 
-      WRITE: next_state = fifo_full ? DISPATCH:WRITE;
+      IDLE:     next_state = sw_begin_write ?  WRITE:IDLE;
+      WRITE:    next_state = sw_begin_dispatch ? DISPATCH:WRITE;
       DISPATCH: next_state = fifo_empty ? DONE:DISPATCH;
-      DONE: ; // Wait for the rest of things to finish
+      DONE:     next_state = sw_clear_done ? IDLE : DONE;
       default:; //Handled
     endcase
 end
 
-// Update State
+// Update State & FIFOs
 always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
-      state <= IDLE;
-      for (int s = 0; s < `SYM_NUM; s++) begin
-        fifo_tail[s] <= '0; // write index
-        fifo_head[s] <= '0; // read index
-      end
-
-    end else begin
-      state <= next_state;
-
-      // Dispatch: advance only the head pointer 
-      if (state == DISPATCH) begin
+        // Reset state
+        state <= IDLE;
+        // Clear Pointers
         for (int s = 0; s < `SYM_NUM; s++) begin
-          // Non-empty if head != tail
-          if ((fifo_head[s] != fifo_tail[s]) && !stall[s]) begin
-            fifo_head[s] <= fifo_head[s] + 1'b1;
-          end
+            fifo_tail[s] <= '0; // write index
+            fifo_head[s] <= '0; // read index
         end
-      end
-    end
-  end
+        
+    end else begin
+        // Update State
+        state <= next_state;
+
+        // Write: software writes into FIFOs and advance tail
+        if (state == WRITE) begin
+            for (int s = 0; s < `SYM_NUM; s++) begin
+                if (sw_wr_en[s] && (fifo_tail[s] < `FIFO_SZ)) begin
+                    fifo[s][fifo_tail[s]] <= sw_wr_data[s];
+                    fifo_tail[s] <= fifo_tail[s] + 1'b1;
+                end
+            end
+        end
+        
+        // Dispatch: advances head pointer 
+        if (state == DISPATCH) begin
+            for (int s = 0; s < `SYM_NUM; s++) begin
+                // Non-empty if head != tail
+                if ((fifo_head[s] != fifo_tail[s]) && !stall[s]) begin
+                fifo_head[s] <= fifo_head[s] + 1'b1;
+                end
+            end
+        end 
+        
+    end // else
+end // always_ff
 
 // Output Logic 
 always_comb begin
@@ -101,7 +120,6 @@ always_comb begin
     order_out_valid  = '0;
     order_out        = '0;
 
-    fifo_tail_addr   = '0; // TODO
     fifo_empty       = 1'b1;
     fifo_full        = 1'b1;
 
