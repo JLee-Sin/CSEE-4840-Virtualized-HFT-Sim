@@ -21,10 +21,11 @@ module order_dispatcher(
 	input logic                         sw_begin_dispatch,  // Enables transition to DISPATCH state
 	input logic                         sw_clear_done,      // Enable transition to IDLE after its done
 	input logic [`SYM_NUM-1:0]          sw_wr_en,           // Enable writing to FIFO tails
-	input DISPATCH_ORDER                sw_wr_data,         // Order to write to FIFO tails
-	input logic [`SYM_NUM-1:0]          sw_wr_ready,        // Signal verifying data was written to FIFO tails
-
+	input DISPATCH_ORDER [`SYM_NUM-1:0] sw_wr_data,         // Order to write to FIFO tails
+	output logic [`SYM_NUM-1:0]         sw_wr_ready,        // Signal verifying data was written to FIFO tails
+	
 	// FIFO state (per symbol/lane)
+	output logic [1:0]                  state_out,          // Current state of Dispatcher
 	output logic [`SYM_NUM-1:0]         fifo_empty,         // Per FIFO empty signals
 	output logic [`SYM_NUM-1:0]         fifo_full,          // Per FIFO full signals
 	
@@ -36,18 +37,17 @@ module order_dispatcher(
 
     //////////////////////////////////////////////////////////////////////////////////
     // FIFOs
-    // There are 8 FIFO, one per symbol/stock
+    // There are SYM_NUM number of FIFOs (i.e. 8), one per symbol/stock
     //  - No need to store symbol since each fifo stores only for one fifo.
     //  - No to sotre the timestamp since the FIFO
     //////////////////////////////////////////////////////////////////////////////////
     
-    // FIFOs (storage)
+    // FIFOs 
     //  - fifo[s][i] : entry i of FIFO for symbol/lane s
     DISPATCH_ORDER fifo [`SYM_NUM-1:0][`FIFO_SZ-1:0];
     
-    // Pointer width needs to represent values in [0..FIFO_SZ]
+    // FIFO pointers
     localparam int FIFO_PTR_W = $clog2(`FIFO_SZ + 1);
-    
     logic [FIFO_PTR_W-1:0] fifo_tail [`SYM_NUM-1:0];    // Write index
     logic [FIFO_PTR_W-1:0] fifo_head [`SYM_NUM-1:0];    // Read index
     
