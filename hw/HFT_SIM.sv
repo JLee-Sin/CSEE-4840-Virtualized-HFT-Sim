@@ -92,6 +92,127 @@ module HFT_SIM #(
     logic                          mem_rdata_valid [4];
     logic                          mem_busy        [4];
 
+    ///////////////////////////////////////////////////////////////////////
+    // Translation Wrapper 
+    ///////////////////////////////////////////////////////////////////////
+    
+    // Register Map
+    localparam int ADDR_CONTROL = 5'd0; // 0x00
+    localparam int ADDR_STATUS  = 5'd1; // 0x04
+    localparam int ADDR_READY   = 5'd2; // 0x08
+    localparam int ADDR_PUSH0   = 5'd4; // 0x10
+    localparam int ADDR_PUSH1   = 5'd5; // 0x14
+    localparam int ADDR_PUSH2   = 5'd6; // 0x18
+    localparam int ADDR_PUSH3   = 5'd7; // 0x1C
+    localparam int ADDR_PUSH4   = 5'd8; // 0x20
+    localparam int ADDR_PUSH5   = 5'd9; // 0x24
+    localparam int ADDR_PUSH6   = 5'd10;// 0x28
+    localparam int ADDR_PUSH7   = 5'd11;// 0x2C
+
+    // Decode writing signals
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            sw_begin_write    <= 1'b0;
+            sw_begin_dispatch <= 1'b0;
+            sw_clear_done     <= 1'b0;
+            sw_wr_en          <= '0;
+            for (int i = 0; i < N; i++) begin
+                sw_wr_data[i] <= '0;
+            end
+            
+        end else begin
+            // default: these are one-cycle pulses
+            sw_begin_write    <= 1'b0;
+            sw_begin_dispatch <= 1'b0;
+            sw_clear_done     <= 1'b0;
+            sw_wr_en          <= '0;
+            
+            if (chipselect && write) begin
+                // Determine where data is being written to
+                unique case (address)
+                    ADDR_CONTROL: begin
+                        sw_begin_write    <= writedata[0];
+                        sw_begin_dispatch <= writedata[1];
+                        sw_clear_done     <= writedata[2];
+                    end
+                    ADDR_PUSH0: begin
+                        if (sw_wr_ready[0]) begin
+                            sw_wr_en[0]   <= 1'b1;
+                            sw_wr_data[0] <= DISPATCH_ORDER'(writedata);
+                        end
+                    end 
+                    ADDR_PUSH1:begin 
+                        if (sw_wr_ready[1]) begin
+                            sw_wr_en[1]   <= 1'b1;
+                            sw_wr_data[1] <= DISPATCH_ORDER'(writedata);
+                        end
+                    end 
+                    ADDR_PUSH2: begin
+                        if (sw_wr_ready[2]) begin
+                            sw_wr_en[2]   <= 1'b1;
+                            sw_wr_data[2] <= DISPATCH_ORDER'(writedata);
+                        end
+                    end
+                    ADDR_PUSH3: begin
+                        if (sw_wr_ready[3]) begin
+                            sw_wr_en[3]   <= 1'b1;
+                            sw_wr_data[3] <= DISPATCH_ORDER'(writedata);
+                        end
+                    end
+                    ADDR_PUSH4: begin
+                        if (sw_wr_ready[4]) begin
+                            sw_wr_en[4]   <= 1'b1;
+                            sw_wr_data[4] <= DISPATCH_ORDER'(writedata);
+                        end
+                    end
+                    ADDR_PUSH5: begin
+                        if (sw_wr_ready[5]) begin
+                            sw_wr_en[5]   <= 1'b1;
+                            sw_wr_data[5] <= DISPATCH_ORDER'(writedata);
+                        end
+                    end
+                    ADDR_PUSH6: begin
+                        if (sw_wr_ready[6]) begin
+                            sw_wr_en[6]   <= 1'b1;
+                            sw_wr_data[6] <= DISPATCH_ORDER'(writedata);
+                        end
+                    end
+                    ADDR_PUSH7: begin
+                        if (sw_wr_ready[7]) begin
+                            sw_wr_en[7]   <= 1'b1;
+                            sw_wr_data[7] <= DISPATCH_ORDER'(writedata);
+                        end
+                    end
+                    default: ;
+                endcase
+            end
+        end
+    end
+
+    // Decode reading signal
+    always_comb begin
+        readdata = 32'd0;
+
+        if (chipselect && read) begin
+            // Determine whre we are reading from
+            unique case (address)
+                // STATUS packing (32-bit):
+                //   [1:0]   dispatcher_state
+                //   [9:2]   sw_wr_ready
+                //   [17:10] fifo_empty
+                //   [25:18] fifo_full
+                //   [31:26] reserved (0)
+                ADDR_STATUS: readdata = {6'd0, fifo_full, fifo_empty, sw_wr_ready, dispatcher_state};
+                ADDR_READY:  readdata = {24'd0, sw_wr_ready};
+                default: ; // Handled
+            endcase
+        end
+    end
+
+    /////////////////////////////////////////////////////////////////////// 
+    // Module Instantiation & Connection 
+    ///////////////////////////////////////////////////////////////////////
+    
     // Order Dispatcher
     order_dispatcher u_dispatcher (
         .clk              (clk),
