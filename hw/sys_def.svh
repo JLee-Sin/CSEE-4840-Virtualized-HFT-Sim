@@ -55,7 +55,7 @@ typedef struct packed {
 typedef struct packed {
     logic        type_;     // Ask (0) or Bid (1)
     logic [15:0] price;     // unsigned int in [0, 65,536]
-    logic [14:0] quantity;  // unsigned int in [0, 65,536]
+    logic [14:0] quantity;  // unsigned int in [0, 32,767]
 
 } DISPATCH_ORDER;
 
