@@ -99,15 +99,14 @@ module HFT_SIM #(
     // Register Map
     localparam int ADDR_CONTROL = 5'd0; // 0x00
     localparam int ADDR_STATUS  = 5'd1; // 0x04
-    localparam int ADDR_READY   = 5'd2; // 0x08
-    localparam int ADDR_PUSH0   = 5'd4; // 0x10
-    localparam int ADDR_PUSH1   = 5'd5; // 0x14
-    localparam int ADDR_PUSH2   = 5'd6; // 0x18
-    localparam int ADDR_PUSH3   = 5'd7; // 0x1C
-    localparam int ADDR_PUSH4   = 5'd8; // 0x20
-    localparam int ADDR_PUSH5   = 5'd9; // 0x24
-    localparam int ADDR_PUSH6   = 5'd10;// 0x28
-    localparam int ADDR_PUSH7   = 5'd11;// 0x2C
+    localparam int ADDR_PUSH0   = 5'd2; // 0x08
+    localparam int ADDR_PUSH1   = 5'd3; // 0x0C
+    localparam int ADDR_PUSH2   = 5'd4; // 0x10
+    localparam int ADDR_PUSH3   = 5'd5; // 0x14
+    localparam int ADDR_PUSH4   = 5'd6; // 0x18
+    localparam int ADDR_PUSH5   = 5'd7; // 0x1C
+    localparam int ADDR_PUSH6   = 5'd8; // 0x20
+    localparam int ADDR_PUSH7   = 5'd9; // 0x24
 
     // Decode writing signals
     always_ff @(posedge clk or negedge rst_n) begin
@@ -201,7 +200,7 @@ module HFT_SIM #(
                 //   [9:2]   sw_wr_ready
                 //   [17:10] fifo_empty
                 //   [25:18] fifo_full
-                //   [31:26] reserved (0)
+                //   [31:26] pad
                 ADDR_STATUS: readdata = {6'd0, fifo_full, fifo_empty, sw_wr_ready, dispatcher_state};
                 ADDR_READY:  readdata = {24'd0, sw_wr_ready};
                 default: ; // Handled
