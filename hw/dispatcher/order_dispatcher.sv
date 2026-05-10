@@ -129,28 +129,19 @@ module order_dispatcher(
         order_out        = '0;
         fifo_empty       = '0;
         fifo_full        = '0;
+        sw_wr_ready      = '0;
 
-        // Update empty, full, and ready signals
         for (int s = 0; s < `SYM_NUM; s++) begin
-            fifo_empty[s] = (fifo_head[s] == fifo_tail[s]);
-            fifo_full[s]  = (fifo_tail[s] == `FIFO_SZ);
+            // Update empty, full, and ready signals
+            fifo_empty[s]  = (fifo_head[s] == fifo_tail[s]);
+            fifo_full[s]   = (fifo_tail[s] == `FIFO_SZ);
             sw_wr_ready[s] = (state == WRITE) && !fifo_full[s];
-        end
-    
-        // Only drive orders during DISPATCH, and only when the engine is ready.
-        if (state == DISPATCH) begin
-            for (int s = 0; s < `SYM_NUM; s++) begin
-                // Raise valid when data is not garbage
-                if (fifo_head[s] != fifo_tail[s]) begin
-                    order_out_valid[s] = 1'b1;
-                    order_out[s]       = fifo[s][fifo_head[s]];
-                end
-                // Advance head when enginer is ready
-                if ((fifo_head[s] != fifo_tail[s]) && order_in_ready[s]) begin
-                    fifo_head[s] <= fifo_head[s] + 1'b1;
-                end
+
+            // Only issue orders during DISPATCH and not empty
+            if ((state == DISPATCH) && (fifo_head[s] != fifo_tail[s])) begin
+                order_out_valid[s] = 1'b1;
+                order_out[s]       = fifo[s][fifo_head[s]];
             end
         end
-        
     end
 endmodule
