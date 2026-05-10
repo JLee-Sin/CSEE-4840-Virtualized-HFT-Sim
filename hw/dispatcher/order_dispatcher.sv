@@ -20,36 +20,36 @@ module order_dispatcher(
 	input logic                         sw_begin_write,     // Enables transition to WRITE state
 	input logic                         sw_begin_dispatch,  // Enables transition to DISPATCH state
 	input logic                         sw_clear_done,      // Enable transition to IDLE after its done
-	input logic [`SYM_NUM-1:0]          sw_wr_en,           // Enable writing to FIFO tails
-	input DISPATCH_ORDER [`SYM_NUM-1:0] sw_wr_data,         // Order to write to FIFO tails
-	output logic [`SYM_NUM-1:0]         sw_wr_ready,        // Signal that FIDO is ready to write
+	input logic [`N-1:0]          sw_wr_en,           // Enable writing to FIFO tails
+	input DISPATCH_ORDER [`N-1:0] sw_wr_data,         // Order to write to FIFO tails
+	output logic [`N-1:0]         sw_wr_ready,        // Signal that FIDO is ready to write
 	
 	// FIFO state (per symbol/lane)
 	output logic [1:0]                  state_out,          // Current state of Dispatcher
-	output logic [`SYM_NUM-1:0]         fifo_empty,         // Per FIFO empty signals
-	output logic [`SYM_NUM-1:0]         fifo_full,          // Per FIFO full signals
+	output logic [`N-1:0]         fifo_empty,         // Per FIFO empty signals
+	output logic [`N-1:0]         fifo_full,          // Per FIFO full signals
 	
 	// Communication with Heap Engines
-	input  logic [`SYM_NUM-1:0]         order_in_ready,     // Per-lane ready from each engine: high when they can accept order
-	output logic [`SYM_NUM-1:0]         order_out_valid,    // High when order_out holds a real order (not trash)
-	output DISPATCH_ORDER [`SYM_NUM-1:0] order_out          // Order presented to engine (consumed when ready)
+	input  logic [`N-1:0]         order_in_ready,     // Per-lane ready from each engine: high when they can accept order
+	output logic [`N-1:0]         order_out_valid,    // High when order_out holds a real order (not trash)
+	output DISPATCH_ORDER [`N-1:0] order_out          // Order presented to engine (consumed when ready)
 );
 
     //////////////////////////////////////////////////////////////////////////////////
     // FIFOs
-    // There are SYM_NUM number of FIFOs (i.e. 8), one per symbol/stock
+    // There are N number of FIFOs (i.e. 8), one per symbol/stock
     //  - No need to store symbol since each fifo stores only for one fifo.
     //  - No to sotre the timestamp since the FIFO
     //////////////////////////////////////////////////////////////////////////////////
     
     // FIFOs 
     //  - fifo[s][i] : entry i of FIFO for symbol/lane s
-    DISPATCH_ORDER fifo [`SYM_NUM-1:0][`FIFO_SZ-1:0];
+    DISPATCH_ORDER fifo [`N-1:0][`FIFO_SZ-1:0];
     
     // FIFO pointers
     localparam int FIFO_PTR_W = $clog2(`FIFO_SZ + 1);
-    logic [FIFO_PTR_W-1:0] fifo_tail [`SYM_NUM-1:0];    // Write index
-    logic [FIFO_PTR_W-1:0] fifo_head [`SYM_NUM-1:0];    // Read index
+    logic [FIFO_PTR_W-1:0] fifo_tail [`N-1:0];    // Write index
+    logic [FIFO_PTR_W-1:0] fifo_head [`N-1:0];    // Read index
     
     //////////////////////////////////////////////////////////////////////////////////
     // FSM Controller
@@ -80,7 +80,7 @@ module order_dispatcher(
             // Reset state
             state <= IDLE;
             // Clear Pointers
-            for (int s = 0; s < `SYM_NUM; s++) begin
+            for (int s = 0; s < `N; s++) begin
                 fifo_tail[s] <= '0; // write index
                 fifo_head[s] <= '0; // read index
             end
@@ -91,7 +91,7 @@ module order_dispatcher(
     
             // Write: software writes into FIFOs and advance tail
             if (state == WRITE) begin
-                for (int s = 0; s < `SYM_NUM; s++) begin
+                for (int s = 0; s < `N; s++) begin
                     if (sw_wr_en[s] && (fifo_tail[s] < `FIFO_SZ)) begin
                         fifo[s][fifo_tail[s]] <= sw_wr_data[s];
                         fifo_tail[s] <= fifo_tail[s] + 1'b1;
@@ -102,7 +102,7 @@ module order_dispatcher(
             // Dispatch: advance head pointer only when an order is actually accepted:
             // FIFO non-empty and corresponding engine asserts ready).
             if (state == DISPATCH) begin
-                for (int s = 0; s < `SYM_NUM; s++) begin
+                for (int s = 0; s < `N; s++) begin
                     if ((fifo_head[s] != fifo_tail[s]) && order_in_ready[s]) begin
                         fifo_head[s] <= fifo_head[s] + 1'b1;
                     end
@@ -112,7 +112,7 @@ module order_dispatcher(
             // Reset pointers when done 
             // Helpful if we decide to do multiple batches of orders
             if (state == DONE && sw_clear_done) begin
-                for (int s = 0; s < `SYM_NUM; s++) begin
+                for (int s = 0; s < `N; s++) begin
                     fifo_tail[s] <= '0;
                     fifo_head[s] <= '0;
                 end
@@ -131,7 +131,7 @@ module order_dispatcher(
         fifo_full        = '0;
         sw_wr_ready      = '0;
 
-        for (int s = 0; s < `SYM_NUM; s++) begin
+        for (int s = 0; s < `N; s++) begin
             // Update empty, full, and ready signals
             fifo_empty[s]  = (fifo_head[s] == fifo_tail[s]);
             fifo_full[s]   = (fifo_tail[s] == `FIFO_SZ);

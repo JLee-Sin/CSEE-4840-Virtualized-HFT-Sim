@@ -12,6 +12,10 @@
 `ifndef __SYS_DEFS_SVH__
 `define __SYS_DEFS_SVH__
 
+// System Parameters
+`define N 8       // Number of symbols 
+`define ORDER_WIDTH 86
+
 // Time scale
 `timescale 1ns/100ps
 
@@ -19,7 +23,6 @@
 `define WORD_WIDTH 32
 
 // Order Dispatch Parameters
-`define SYM_NUM 8       // Number of symbols 
 `define FIFO_SZ 1660  // 
 
 ///////////// STRUCTS /////////////
