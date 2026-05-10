@@ -108,6 +108,15 @@ module order_dispatcher(
                     end
                 end
             end 
+
+            // Reset pointers when done 
+            // Helpful if we decide to do multiple batches of orders
+            if (state == DONE && sw_clear_done) begin
+                for (int s = 0; s < `SYM_NUM; s++) begin
+                    fifo_tail[s] <= '0;
+                    fifo_head[s] <= '0;
+                end
+            end
             
         end // else
     end // always_ff
@@ -131,9 +140,14 @@ module order_dispatcher(
         // Only drive orders during DISPATCH, and only when the engine is ready.
         if (state == DISPATCH) begin
             for (int s = 0; s < `SYM_NUM; s++) begin
-                if ((fifo_head[s] != fifo_tail[s]) && order_in_ready[s]) begin
+                // Raise valid when data is not garbage
+                if (fifo_head[s] != fifo_tail[s]) begin
                     order_out_valid[s] = 1'b1;
                     order_out[s]       = fifo[s][fifo_head[s]];
+                end
+                // Advance head when enginer is ready
+                if ((fifo_head[s] != fifo_tail[s]) && order_in_ready[s]) begin
+                    fifo_head[s] <= fifo_head[s] + 1'b1;
                 end
             end
         end
