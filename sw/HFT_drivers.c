@@ -24,6 +24,7 @@
 #include <linux/uaccess.h>
 #include <linux/types.h>
 #include <linux/mutex.h>
+#include <linux/delay.h>
 #include "HFT_drivers.h"
 
 #define DRIVER_NAME "HFT_SIM"
@@ -33,6 +34,13 @@
 #define REG_STATUS       0x04
 #define REG_PUSH_BASE    0x08
 #define REG_PUSH(n)      (REG_PUSH_BASE + 4 * (n)) // We are using 32-bit words
+#define REG_LOG_COUNT   0x28
+#define REG_LOG_FLAGS   0x2C
+#define REG_LOG_INDEX   0x30
+#define REG_LOG_DATA0   0x34
+#define REG_LOG_DATA1   0x38
+#define REG_LOG_DATA2   0x3C
+#define REG_LOG_CLEAR   0x40
 #define REG_ADDR(x)      (dev.virtbase + (x))
 
 // Control and status bit defs
@@ -50,6 +58,8 @@
 #define HFT_STATE_WRITE      1
 #define HFT_STATE_DISPATCH   2
 #define HFT_STATE_DONE       3
+#define LOG_FLAG_OVERFLOW   BIT(0)
+#define LOG_FLAG_DATA_VALID BIT(1)
 
 // Information about HFT_SIM device
 struct hft_dev {
@@ -105,6 +115,58 @@ static int hft_push_order_hw(__u32 lane, const struct hft_order *o){
     return 0;
 }
 
+// Read trade log count
+static inline __u32 hft_read_log_count(void){
+    return ioread32(REG_ADDR(REG_LOG_COUNT));
+}
+
+// Read trade flags logs
+static inline __u32 hft_read_log_flags(void){
+    return ioread32(REG_ADDR(REG_LOG_FLAGS));
+}
+
+// Write index of log requested
+static inline void hft_request_log_entry(__u32 index){
+    iowrite32(index, REG_ADDR(REG_LOG_INDEX));
+}
+
+// Write log clear signal
+static inline void hft_clear_log_hw(void){
+    iowrite32(1, REG_ADDR(REG_LOG_CLEAR));
+}
+
+// Read trade log
+static int hft_read_log_entry_hw(struct hft_log_entry *entry){
+    __u32 raw, count, flags;
+    int timeout_us = 1000;
+
+    raw = hft_read_status_raw();
+    if ((raw & STATUS_STATE_MASK) != HFT_STATE_DONE)
+        return -EAGAIN;
+
+    count = hft_read_log_count();
+    if (entry->index >= count)
+        return -EINVAL;
+
+    hft_request_log_entry(entry->index);
+
+    do {
+        flags = hft_read_log_flags();
+        if (flags & LOG_FLAG_DATA_VALID)
+            break;
+        udelay(1);
+    } while (--timeout_us);
+
+    if (!(flags & LOG_FLAG_DATA_VALID))
+        return -ETIMEDOUT;
+
+    entry->word0 = ioread32(REG_ADDR(REG_LOG_DATA0));
+    entry->word1 = ioread32(REG_ADDR(REG_LOG_DATA1));
+    entry->word2 = ioread32(REG_ADDR(REG_LOG_DATA2)) & 0x003FFFFF;
+
+    return 0;
+}
+
 /////////////////////////////////////////////////////////////////////// 
 // User API 
 ///////////////////////////////////////////////////////////////////////
@@ -114,50 +176,84 @@ static long hft_ioctl(struct file *f, unsigned int cmd, unsigned long arg){
     void __user *user_arg = (void __user *)arg;
     struct hft_push_req req;
     struct hft_status st;
+    struct hft_log_info li;
+    struct hft_log_entry le;
     __u32 raw;
     long ret = 0;
 
     mutex_lock(&dev.lock);
 
-    // 
+    // Determine what operation to perform 
     switch (cmd) {
-    case HFT_IOC_BEGIN_WRITE:
-        hft_write_control(CTRL_BEGIN_WRITE);
-        break;
-
-    case HFT_IOC_BEGIN_DISPATCH:
-        hft_write_control(CTRL_BEGIN_DISPATCH);
-        break;
-
-    case HFT_IOC_CLEAR_DONE:
-        hft_write_control(CTRL_CLEAR_DONE);
-        break;
-
-    case HFT_IOC_PUSH_ORDER:
-        if (copy_from_user(&req, user_arg, sizeof(req))) {
-            ret = -EFAULT;
+        case HFT_IOC_BEGIN_WRITE:
+            hft_write_control(CTRL_BEGIN_WRITE);
+            break;
+    
+        case HFT_IOC_BEGIN_DISPATCH:
+            hft_write_control(CTRL_BEGIN_DISPATCH);
+            break;
+    
+        case HFT_IOC_CLEAR_DONE:
+            hft_write_control(CTRL_CLEAR_DONE);
+            break;
+    
+        case HFT_IOC_PUSH_ORDER:
+            if (copy_from_user(&req, user_arg, sizeof(req))) {
+                ret = -EFAULT;
+                break;
+            }
+    
+            ret = hft_push_order_hw(req.lane, &req.order);
+            break;
+    
+        case HFT_IOC_GET_STATUS:
+            raw = hft_read_status_raw();
+        
+            st.state      = raw & STATUS_STATE_MASK;
+            st.ready_mask = (raw & STATUS_READY_MASK) >> STATUS_READY_SHIFT;
+            st.empty_mask = (raw & STATUS_EMPTY_MASK) >> STATUS_EMPTY_SHIFT;
+            st.full_mask  = (raw & STATUS_FULL_MASK)  >> STATUS_FULL_SHIFT;
+        
+            if (copy_to_user(user_arg, &st, sizeof(st)))
+                ret = -EFAULT;
+            break;
+    
+        case HFT_IOC_GET_LOG_INFO:
+            raw = hft_read_status_raw();
+            if ((raw & STATUS_STATE_MASK) != HFT_STATE_DONE) {
+                ret = -EAGAIN;
+                break;
+            }
+    
+            li.count    = hft_read_log_count();
+            li.overflow = !!(hft_read_log_flags() & LOG_FLAG_OVERFLOW);
+    
+            if (copy_to_user(user_arg, &li, sizeof(li)))
+                ret = -EFAULT;
+            break;
+    
+        case HFT_IOC_READ_LOG_ENTRY:
+            if (copy_from_user(&le, user_arg, sizeof(le))) {
+                ret = -EFAULT;
+                break;
+            }
+    
+            ret = hft_read_log_entry_hw(&le);
+            if (ret)
+                break;
+    
+            if (copy_to_user(user_arg, &le, sizeof(le)))
+                ret = -EFAULT;
+            break;
+    
+        case HFT_IOC_CLEAR_LOG:
+            hft_clear_log_hw();
+            break;
+        
+        default:
+            ret = -EINVAL;
             break;
         }
-
-        ret = hft_push_order_hw(req.lane, &req.order);
-        break;
-
-    case HFT_IOC_GET_STATUS:
-        raw = hft_read_status_raw();
-    
-        st.state      = raw & STATUS_STATE_MASK;
-        st.ready_mask = (raw & STATUS_READY_MASK) >> STATUS_READY_SHIFT;
-        st.empty_mask = (raw & STATUS_EMPTY_MASK) >> STATUS_EMPTY_SHIFT;
-        st.full_mask  = (raw & STATUS_FULL_MASK)  >> STATUS_FULL_SHIFT;
-    
-        if (copy_to_user(user_arg, &st, sizeof(st)))
-            ret = -EFAULT;
-        break;
-
-    default:
-        ret = -EINVAL;
-        break;
-    }
 
     mutex_unlock(&dev.lock);
     return ret;
