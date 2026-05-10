@@ -202,9 +202,9 @@ static void csv_execution(const char *filename) {
 		symbol[3] = '\0';
 
 		int is_ask = -1;
-		if (strcmp(type, "Ask") == 0 || strcmp(type, "ask") == 0)
+		if (strcmp(type, "Ask") == 0 || strcmp(type, "ASK") == 0)
 			is_ask = 1;
-		else if (strcmp(type, "Bid") == 0 || strcmp(type, "bid") == 0)
+		else if (strcmp(type, "Bid") == 0 || strcmp(type, "BID") == 0)
 			is_ask = 0;
 
 		if (is_ask < 0) {

@@ -10,7 +10,7 @@
 #define DEFAULT_ORDERS 100
 #define MAX_PRICE 100
 #define MAX_AMOUNT 10
-#define MAX_ORDERS 1000
+#define MAX_ORDERS 15000
 #define TRIM_TIME 10000
 
 struct MemoryManager;
