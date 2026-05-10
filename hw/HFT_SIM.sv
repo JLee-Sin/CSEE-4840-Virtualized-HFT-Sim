@@ -234,6 +234,20 @@ module HFT_SIM #(
                             avl_log_read_pipe   <= 2'b01;
                         end
                     end
+                    ADDR_LOG_INDEX: begin
+                        log_sw_addr    <= writedata[TL_ADDR_W-1:0];
+                        log_sw_re      <= 1'b1;
+                        log_data_valid <= 1'b0;
+                        log_read_pipe  <= 2'b01;
+                    end
+                    ADDR_LOG_CLEAR: begin
+                        if (writedata[0]) begin
+                            log_sw_clear    <= 1'b1;
+                            log_data_shadow <= '0;
+                            log_data_valid  <= 1'b0;
+                            log_read_pipe   <= 2'b00;
+                        end
+                    end
                     default: ;
                 endcase
             end
