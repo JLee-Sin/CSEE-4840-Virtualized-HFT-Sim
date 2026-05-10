@@ -22,7 +22,7 @@ module order_dispatcher(
 	input logic                         sw_clear_done,      // Enable transition to IDLE after its done
 	input logic [`SYM_NUM-1:0]          sw_wr_en,           // Enable writing to FIFO tails
 	input DISPATCH_ORDER [`SYM_NUM-1:0] sw_wr_data,         // Order to write to FIFO tails
-	output logic [`SYM_NUM-1:0]         sw_wr_ready,        // Signal verifying data was written to FIFO tails
+	output logic [`SYM_NUM-1:0]         sw_wr_ready,        // Signal that FIDO is ready to write
 	
 	// FIFO state (per symbol/lane)
 	output logic [1:0]                  state_out,          // Current state of Dispatcher
@@ -56,12 +56,11 @@ module order_dispatcher(
     //////////////////////////////////////////////////////////////////////////////////
     
     DISPATCH_STATE state, next_state;
-    assign state_out = state;
     
     // Next State Logic 
     always_comb begin
         // Defaults
-        next_state = IDLE;
+        next_state = state;
     
         // Transitions 
         // Note: tansitions to DISPATCH is SW controll to enable dipatching
@@ -119,14 +118,14 @@ module order_dispatcher(
         state_out        = state;
         order_out_valid  = '0;
         order_out        = '0;
-    
         fifo_empty       = '0;
         fifo_full        = '0;
 
-        // Compute per-FIFO empty/full
+        // Update empty, full, and ready signals
         for (int s = 0; s < `SYM_NUM; s++) begin
             fifo_empty[s] = (fifo_head[s] == fifo_tail[s]);
             fifo_full[s]  = (fifo_tail[s] == `FIFO_SZ);
+            sw_wr_ready[s] = (state == WRITE) && !fifo_full[s];
         end
     
         // Only drive orders during DISPATCH, and only when the engine is ready.
