@@ -35,8 +35,6 @@ struct hft_log_entry {
     __u32 word2;   // output: bits [85:64] in low 22 bits
 };
 
-// Communication with Order Dispatcher
-#define HFT_DRIVERS_MAGIC 'h'
 // Communication with Order Dispatcher / Trade Log
 #define HFT_DRIVERS_MAGIC 'h'
 #define HFT_IOC_BEGIN_WRITE      _IO(HFT_DRIVERS_MAGIC, 1)
