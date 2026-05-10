@@ -234,18 +234,20 @@ module HFT_SIM #(
                             avl_log_read_pipe   <= 2'b01;
                         end
                     end
-                    ADDR_LOG_INDEX: begin
-                        log_sw_addr    <= writedata[TL_ADDR_W-1:0];
-                        log_sw_re      <= 1'b1;
-                        log_data_valid <= 1'b0;
-                        log_read_pipe  <= 2'b01;
-                    end
-                    ADDR_LOG_CLEAR: begin
+                    ADDR_LOG_CMD: begin
+                        // bit 0 = clear
+                        // bit 1 = read_req
+                        // bits [LOG_IDX_W+1:2] = read_index
                         if (writedata[0]) begin
-                            log_sw_clear    <= 1'b1;
-                            log_data_shadow <= '0;
-                            log_data_valid  <= 1'b0;
-                            log_read_pipe   <= 2'b00;
+                            avl_log_clear_pulse <= 1'b1;
+                            avl_log_data_shadow <= '0;
+                            avl_log_data_valid  <= 1'b0;
+                            avl_log_read_pipe   <= 2'b00;
+                        end else if (writedata[1]) begin
+                            avl_log_read_index  <= writedata[LOG_IDX_W+1:2];
+                            avl_log_read_pulse  <= 1'b1;
+                            avl_log_data_valid  <= 1'b0;
+                            avl_log_read_pipe   <= 2'b01;
                         end
                     end
                     default: ;
