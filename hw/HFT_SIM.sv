@@ -19,20 +19,13 @@ module HFT_SIM #(
     input  logic                                    rst_n,
 
     // Avalon Bus Interface
+    // This will be the only way to communicate with the Linux core
     input  logic                                    chipselect,
     input  logic                                    write,
     input  logic                                    read,
     input  logic [4:0]                              address,
     input  logic [31:0]                             writedata,
     output logic [31:0]                             readdata,
-
-    // Trade log Signals
-    input  logic                                    trade_log_re,
-    input  logic [$clog2(TRADE_LOG_DEPTH)-1:0]      trade_log_addr,
-    output logic [85:0]                             trade_log_rdata,
-    output logic [$clog2(TRADE_LOG_DEPTH+1)-1:0]    trade_log_count,
-    output logic                                    trade_log_overflow,
-    input  logic                                    trade_log_clear,
 
     // Per-engine status (debug / hazard unit)
     output logic [13:0]                             bid_size [8],
@@ -59,6 +52,23 @@ module HFT_SIM #(
     logic [N-1:0]             fifo_empty;
     logic [N-1:0]             fifo_full;
     logic [1:0]               dispatcher_state;
+
+    // Top module wrapper to trade logs
+    localparam int TL_ADDR_W = $clog2(TRADE_LOG_DEPTH);
+    localparam int TL_CNT_W  = $clog2(TRADE_LOG_DEPTH + 1);
+    logic                    log_sw_re;
+    logic [TL_ADDR_W-1:0]    log_sw_addr;
+    logic [NODE_WIDTH-1:0]   log_sw_rdata;
+    logic [TL_CNT_W-1:0]     log_sw_count;
+    logic                    log_sw_overflow;
+    logic                    log_sw_clear;
+    // Shadow register for software-visible log data
+    logic [NODE_WIDTH-1:0]   log_data_shadow;
+    logic                    log_data_valid;
+    // Because trade_log read is registered, we need a 2-cycle pipe:
+    // write LOG_INDEX -> pulse sw_re -> trade_log updates sw_rdata next cycle
+    // -> capture sw_rdata the cycle after that
+    logic [1:0]              log_read_pipe;
     
     // Dispatcher to engines bus
     logic                  [N-1:0] order_in_valid;
@@ -94,6 +104,9 @@ module HFT_SIM #(
 
     ///////////////////////////////////////////////////////////////////////
     // Translation Wrapper 
+    // 
+    // This decodes or encodes information so that we can communicate with 
+    // the Linux core over the Avalon bus.  
     ///////////////////////////////////////////////////////////////////////
     
     // Register Map
@@ -107,6 +120,13 @@ module HFT_SIM #(
     localparam int ADDR_PUSH5   = 5'd7; // 0x1C
     localparam int ADDR_PUSH6   = 5'd8; // 0x20
     localparam int ADDR_PUSH7   = 5'd9; // 0x24
+    localparam int ADDR_LOG_COUNT = 5'd10; // 0x28
+    localparam int ADDR_LOG_FLAGS = 5'd11; // 0x2C
+    localparam int ADDR_LOG_INDEX = 5'd12; // 0x30
+    localparam int ADDR_LOG_DATA0 = 5'd13; // 0x34
+    localparam int ADDR_LOG_DATA1 = 5'd14; // 0x38
+    localparam int ADDR_LOG_DATA2 = 5'd15; // 0x3C
+    localparam int ADDR_LOG_CLEAR = 5'd16; // 0x40
 
     // Decode writing signals
     always_ff @(posedge clk or negedge rst_n) begin
@@ -115,17 +135,39 @@ module HFT_SIM #(
             sw_begin_dispatch <= 1'b0;
             sw_clear_done     <= 1'b0;
             sw_wr_en          <= '0;
+
+            log_sw_re         <= 1'b0;
+            log_sw_addr       <= '0;
+            log_sw_clear      <= 1'b0;
+            log_data_shadow   <= '0;
+            log_data_valid    <= 1'b0;
+            log_read_pipe     <= 2'b00;
+
             for (int i = 0; i < N; i++) begin
                 sw_wr_data[i] <= '0;
             end
-            
+
         end else begin
             // default: these are one-cycle pulses
             sw_begin_write    <= 1'b0;
             sw_begin_dispatch <= 1'b0;
             sw_clear_done     <= 1'b0;
             sw_wr_en          <= '0;
-            
+
+            log_sw_re         <= 1'b0;
+            log_sw_clear      <= 1'b0;
+
+            // Trade_log read timing:
+            // 01 -> request issued
+            // 10 -> capture returned data
+            if (log_read_pipe[0]) begin
+                log_read_pipe <= 2'b10;
+            end else if (log_read_pipe[1]) begin
+                log_read_pipe   <= 2'b00;
+                log_data_shadow <= log_sw_rdata;
+                log_data_valid  <= 1'b1;
+            end
+
             if (chipselect && write) begin
                 // Determine where data is being written to
                 unique case (address)
@@ -139,13 +181,13 @@ module HFT_SIM #(
                             sw_wr_en[0]   <= 1'b1;
                             sw_wr_data[0] <= DISPATCH_ORDER'(writedata);
                         end
-                    end 
-                    ADDR_PUSH1:begin 
+                    end
+                    ADDR_PUSH1: begin
                         if (sw_wr_ready[1]) begin
                             sw_wr_en[1]   <= 1'b1;
                             sw_wr_data[1] <= DISPATCH_ORDER'(writedata);
                         end
-                    end 
+                    end
                     ADDR_PUSH2: begin
                         if (sw_wr_ready[2]) begin
                             sw_wr_en[2]   <= 1'b1;
@@ -182,6 +224,20 @@ module HFT_SIM #(
                             sw_wr_data[7] <= DISPATCH_ORDER'(writedata);
                         end
                     end
+                    ADDR_LOG_INDEX: begin
+                        log_sw_addr    <= writedata[TL_ADDR_W-1:0];
+                        log_sw_re      <= 1'b1;
+                        log_data_valid <= 1'b0;
+                        log_read_pipe  <= 2'b01;
+                    end
+                    ADDR_LOG_CLEAR: begin
+                        if (writedata[0]) begin
+                            log_sw_clear    <= 1'b1;
+                            log_data_shadow <= '0;
+                            log_data_valid  <= 1'b0;
+                            log_read_pipe   <= 2'b00;
+                        end
+                    end
                     default: ;
                 endcase
             end
@@ -192,9 +248,21 @@ module HFT_SIM #(
     always_comb begin
         readdata = 32'd0;
 
-        // We are only reading from place now
-        if (chipselect && read && ( address == ADDR_STATUS) ) begin
-            readdata = {6'd0, fifo_full, fifo_empty, sw_wr_ready, dispatcher_state};
+        if (chipselect && read) begin
+            unique case (address)
+                ADDR_STATUS: readdata = {6'd0, fifo_full, fifo_empty, sw_wr_ready, dispatcher_state};
+                ADDR_LOG_COUNT: readdata = {{(32-TL_CNT_W){1'b0}}, log_sw_count};
+                ADDR_LOG_FLAGS: begin
+                    // bit 0 = overflow
+                    // bit 1 = selected log entry valid in DATA0/1/2
+                    readdata = {30'd0, log_data_valid, log_sw_overflow};
+                end
+                ADDR_LOG_INDEX: readdata = {{(32-TL_ADDR_W){1'b0}}, log_sw_addr};
+                ADDR_LOG_DATA0: readdata = log_data_shadow[31:0];
+                ADDR_LOG_DATA1: readdata = log_data_shadow[63:32];
+                ADDR_LOG_DATA2: readdata = {10'd0, log_data_shadow[85:64]};
+                default: ; // Handled
+            endcase
         end
     end
 
@@ -365,12 +433,12 @@ module HFT_SIM #(
         .trade_in_valid (agg_trade_valid),
         .trade_in_data  (agg_trade_data),
         .trade_in_ready (agg_trade_ready),
-        .sw_re          (trade_log_re),
-        .sw_addr        (trade_log_addr),
-        .sw_rdata       (trade_log_rdata),
-        .sw_count       (trade_log_count),
-        .sw_overflow    (trade_log_overflow),
-        .sw_clear       (trade_log_clear)
+        .sw_re          (log_sw_re),
+        .sw_addr        (log_sw_addr),
+        .sw_rdata       (log_sw_rdata),
+        .sw_count       (log_sw_count),
+        .sw_overflow    (log_sw_overflow),
+        .sw_clear       (log_sw_clear)
     );
 
 endmodule
