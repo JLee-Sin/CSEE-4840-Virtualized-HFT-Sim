@@ -18,16 +18,13 @@ module HFT_SIM #(
     input  logic                                    clk,
     input  logic                                    rst_n,
 
-    // Harness to dispatcher (write path)
+    // Avalon Bus Interface
     input  logic                                    chipselect,
     input  logic                                    write,
     input  logic                                    read,
     input  logic [4:0]                              address,
     input  logic [31:0]                             writedata,
     output logic [31:0]                             readdata,
-    output logic [`SYM_NUM-1:0]                     fifo_empty,
-    output logic [`SYM_NUM-1:0]                     fifo_full,
-    output logic [1:0]                              dispatcher_state,
 
     // Trade log Signals
     input  logic                                    trade_log_re,
@@ -58,7 +55,10 @@ module HFT_SIM #(
     logic                     sw_clear_done;
     logic [N-1:0]             sw_wr_en;
     logic [N-1:0]             sw_wr_ready;
-    DISPATCH_ORDER            sw_wr_data [N];
+    DISPATCH_ORDER [N-1:0]    sw_wr_data;
+    logic [N-1:0]             fifo_empty;
+    logic [N-1:0]             fifo_full;
+    logic [1:0]               dispatcher_state;
     
     // Dispatcher to engines bus
     logic                  [N-1:0] order_in_valid;
@@ -192,19 +192,9 @@ module HFT_SIM #(
     always_comb begin
         readdata = 32'd0;
 
-        if (chipselect && read) begin
-            // Determine whre we are reading from
-            unique case (address)
-                // STATUS packing (32-bit):
-                //   [1:0]   dispatcher_state
-                //   [9:2]   sw_wr_ready
-                //   [17:10] fifo_empty
-                //   [25:18] fifo_full
-                //   [31:26] pad
-                ADDR_STATUS: readdata = {6'd0, fifo_full, fifo_empty, sw_wr_ready, dispatcher_state};
-                ADDR_READY:  readdata = {24'd0, sw_wr_ready};
-                default: ; // Handled
-            endcase
+        // We are only reading from place now
+        if (chipselect && read && ( address == ADDR_STATUS) ) begin
+            readdata = {6'd0, fifo_full, fifo_empty, sw_wr_ready, dispatcher_state};
         end
     end
 
