@@ -4,7 +4,7 @@
 #include <linux/ioctl.h>
 #include <linux/types.h>
 
-// Structs
+// Structs 
 struct hft_order {
     __u8  type;      // 0 or 1
     __u16 price;     // 16 bits */
