@@ -24,7 +24,7 @@ module mem_bank #(
     assign local_page_idx = global_page[5:0] - FIRST_PAGE_FOR_BANK[5:0];
     assign node_idx       = mem_addr[9:4];
 
-    typedef enum logic [1:0] {
+    typedef enum logic [2:0] {
         IDLE,
 	PHASE_0,
         PHASE_1,
