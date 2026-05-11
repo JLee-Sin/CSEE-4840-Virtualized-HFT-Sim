@@ -10,7 +10,7 @@
 //   - 1 trade_log
 //   - 1 free-running 32-bit timestamp
 
-`include "hw/sys_def.svh"
+`include "sys_def.svh"
 
 module HFT_SIM #(
     parameter int TRADE_LOG_DEPTH = 1024
@@ -25,11 +25,7 @@ module HFT_SIM #(
     input  logic                                    read,
     input  logic [4:0]                              address,
     input  logic [31:0]                             writedata,
-    output logic [31:0]                             readdata,
-
-    // Per-engine status (debug / hazard unit)
-    output logic [13:0]                             bid_size [8],
-    output logic [13:0]                             ask_size [8]
+    output logic [31:0]                             readdata
 );
 
     // Free-running timestamp counter
@@ -323,8 +319,8 @@ module HFT_SIM #(
                 .mmu_resp_data   (mmu_resp_data[e]),
                 .mmu_resp_valid  (mmu_resp_valid[e]),
                 .mmu_resp_reject (mmu_resp_reject[e]),
-                .bid_size_o      (bid_size[e]),
-                .ask_size_o      (ask_size[e])
+                .bid_size_o      (), // Leave disconnected for now
+                .ask_size_o      ()
             );
         end
     endgenerate
