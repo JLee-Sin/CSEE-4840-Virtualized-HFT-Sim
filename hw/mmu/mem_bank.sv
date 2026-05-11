@@ -99,16 +99,15 @@ module mem_bank #(
         endcase
     end
 
-    logic [59:0] bram_we_a, bram_we_b;
-    logic [59:0] bram_re_a, bram_re_b;
-    logic [31:0] bram_rdata_a [60];
-    logic [31:0] bram_rdata_b [60];
+    logic [59:0] bram_we;
+    logic [59:0] bram_re;
+    logic [31:0] bram_rdata [60];
 
     always_comb begin
         bram_we = '0;
         bram_re = '0;
 
-        if(state inside {PHASE_0, PHASE_1, PHASE_2}) begin
+        if((state == PHASE_0) || (state == PHASE_1) || (state == PHASE_2)) begin
 	   if (latched_is_write) begin
 	       bram_we[latched_page] = 1'b1;
 	   end else begin
@@ -133,7 +132,7 @@ module mem_bank #(
                 read_assemble[63:32]  <= active_rdata;
             end
             if (state == DONE_READ) begin
-                read_assemble[85:64] <= active_rdata_a[21:0];
+                read_assemble[85:64] <= active_rdata[21:0];
             end
         end
     end
@@ -171,7 +170,7 @@ module mem_bank #(
 		.waddr (bram_waddr),
                 .raddr (bram_raddr),
                 .wdata (bram_wdata),
-                .rdata (bram_rdata)
+                .rdata (bram_rdata[p])
             );
         end
     endgenerate
@@ -187,7 +186,7 @@ module bram_dp_256x32 (
     input  logic [7:0]  waddr,
     input  logic [7:0]  raddr,
     input  logic [31:0] wdata,
-    output logic [31:0] rdata,
+    output logic [31:0] rdata
 );
 
     logic [31:0] mem [256];
