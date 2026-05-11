@@ -99,6 +99,7 @@ module HFT_SIM #(
     logic [`ORDER_WIDTH-1:0]    mem_rdata       [4];
     logic                       mem_rdata_valid [4];
     logic                       mem_busy        [4];
+    logic                       mem_wdone       [4];
 
     ///////////////////////////////////////////////////////////////////////
     // Translation Wrapper 
@@ -390,7 +391,10 @@ module HFT_SIM #(
         .mem_rdata_valid_2(mem_rdata_valid[2]), .mem_rdata_valid_3(mem_rdata_valid[3]),
 
         .mem_busy_0(mem_busy[0]), .mem_busy_1(mem_busy[1]),
-        .mem_busy_2(mem_busy[2]), .mem_busy_3(mem_busy[3])
+        .mem_busy_2(mem_busy[2]), .mem_busy_3(mem_busy[3]),
+
+        .mem_wdone_0(mem_wdone[0]), .mem_wdone_1(mem_wdone[1]),
+        .mem_wdone_2(mem_wdone[2]), .mem_wdone_3(mem_wdone[3]),
     );
 
     // 4 Memory Banks
@@ -407,6 +411,7 @@ module HFT_SIM #(
                 .mem_rdata       (mem_rdata[b]),
                 .mem_rdata_valid (mem_rdata_valid[b]),
                 .mem_busy        (mem_busy[b])
+                .mem_wdone       (mem_wdone[b])
             );
         end
     endgenerate
