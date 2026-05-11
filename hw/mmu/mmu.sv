@@ -281,16 +281,23 @@ module mmu (
         if (ptw1_alloc_eff) begin
             page_node_free[ptw1_alloc_page][ptw1_alloc_node] <= 1'b0;
         end
+	
+	if(ptw0_alloc) begin
+	   logic [63:0] next_val_0;
+	   next_val_0 = page_node_free[ptw0_alloc_page];
+	   next_val_0[ptw0_alloc_node] = 1'b0;
 
-        for (int p = 0; p < 240; p++) begin
-            logic [63:0] post_clear;
-            post_clear = page_node_free[p];
-            if (ptw0_alloc && (ptw0_alloc_page == p[7:0]))
-                post_clear[ptw0_alloc_node] = 1'b0;
-            if (ptw1_alloc_eff && (ptw1_alloc_page == p[7:0]))
-                post_clear[ptw1_alloc_node] = 1'b0;
-            page_has_free[p] <= |post_clear;
-       end
+	   if (ptw1_alloc_eff && (ptw1_alloc_page == ptw0_alloc_page)) begin
+		logic [63:0] next_val_1;
+		next_val_1 = page_node_free[ptw1_alloc_page];
+		next_val_1[ptw1_alloc_node] = 1'b0;
+		page_has_free[ptw1_alloc_page] <= |next_val_1;
+	   end
+	end
+
+	if(ptw1_alloc_eff && (!ptw0_alloc || (ptw0_alloc_page != ptw1_alloc_page))) begin
+
+	end
     end
 
     logic [13:0] ptw0_pt_raddr, ptw1_pt_raddr;
@@ -311,9 +318,7 @@ module mmu (
         end
 
         ptw0_pt_rdata <= page_table[ptw0_pt_raddr];
-    end
-
-    always_ff @(posedge clk) begin
+	
         if (ptw1_pt_we_eff && (ptw1_pt_raddr == ptw1_pt_waddr)) begin
             page_table[ptw1_pt_raddr] <= ptw1_pt_wdata;
         end
