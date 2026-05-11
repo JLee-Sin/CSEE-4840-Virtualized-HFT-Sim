@@ -302,8 +302,8 @@ module mmu (
     logic ptw1_pt_we_eff;
     assign ptw1_pt_we_eff = ptw1_pt_we && !same_alloc_collision;
 
-    logic [14:0] page_table_copy_a [16384];
-    logic [14:0] page_table_copy_b [16384];
+    logic [14:0] page_table_copy_a [16384] = '{default:15'd0};
+    logic [14:0] page_table_copy_b [16384] = '{default:15'd0};
 
     always_ff @(posedge clk) begin
         if (ptw0_pt_we) begin
@@ -317,13 +317,6 @@ module mmu (
 
         ptw0_pt_rdata <= page_table_copy_a[ptw0_pt_raddr];
         ptw1_pt_rdata <= page_table_copy_b[ptw1_pt_raddr];
-    end
-
-    initial begin
-        for (int i = 0; i < 16384; i++) begin
-            page_table_copy_a[i] = 15'd0;
-            page_table_copy_b[i] = 15'd0;
-        end
     end
 
     HPTW #(.LOW_FIRST(1'b1)) u_ptw0 (
