@@ -48,6 +48,7 @@ module HFT_SIM #(
 
     // Avalon/software wrapper -> trade_log
     localparam int LOG_IDX_W   = $clog2(TRADE_LOG_DEPTH);
+    localparam int LOG_IDX_W_BUS  = (LOG_IDX_W > 30) ? 30 : LOG_IDX_W; // max index bits in [31:2]
     localparam int LOG_COUNT_W = $clog2(TRADE_LOG_DEPTH + 1);
 
     logic                      avl_log_read_pulse;
@@ -228,7 +229,7 @@ module HFT_SIM #(
                             avl_log_data_valid  <= 1'b0;
                             avl_log_read_pipe   <= 2'b00;
                         end else if (writedata[1]) begin
-                            avl_log_read_index  <= writedata[LOG_IDX_W+1:2];
+                            avl_log_read_index  <= writedata[LOG_IDX_W_BUS+1:2];
                             avl_log_read_pulse  <= 1'b1;
                             avl_log_data_valid  <= 1'b0;
                             avl_log_read_pipe   <= 2'b01;
