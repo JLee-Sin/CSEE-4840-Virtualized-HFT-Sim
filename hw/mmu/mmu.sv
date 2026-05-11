@@ -28,7 +28,8 @@ module mmu (
     input  logic [85:0] mem_rdata_0, mem_rdata_1, mem_rdata_2, mem_rdata_3,
     input  logic        mem_rdata_valid_0, mem_rdata_valid_1,
                         mem_rdata_valid_2, mem_rdata_valid_3,
-    input  logic        mem_busy_0, mem_busy_1, mem_busy_2, mem_busy_3
+    input  logic        mem_busy_0, mem_busy_1, mem_busy_2, mem_busy_3,
+    input  logic	mem_wdone_0, mem_wdone_1, mem_wdone_2, mem_wdone_3
 );
 
     logic        req_valid [8];
@@ -246,8 +247,16 @@ module mmu (
         end
     end
 
-    logic [63:0]  page_node_free [240];
+    (* ramstyle = "M10K" *)
+    logic [63:0]  page_node_free [0:239];
     logic [239:0] page_has_free;
+    
+    initial begin
+	for(int i = 0; i < 240; i++) begin
+		page_node_free[i] = {64{1'b1}};
+	end
+	page_has_free = {240{1'b1}};
+    end
 
     logic       ptw0_alloc, ptw1_alloc;
     logic [7:0] ptw0_alloc_page, ptw1_alloc_page;
@@ -260,37 +269,28 @@ module mmu (
     assign ptw1_node_slice = page_node_free[ptw1_page_select];
 
     logic same_alloc_collision;
-    assign same_alloc_collision = ptw0_alloc && ptw1_alloc &&
-                                  (ptw0_alloc_page == ptw1_alloc_page) &&
-                                  (ptw0_alloc_node == ptw1_alloc_node);
+    assign same_alloc_collision = ptw0_alloc && ptw1_alloc && (ptw0_alloc_page == ptw1_alloc_page) && (ptw0_alloc_node == ptw1_alloc_node);
 
     logic ptw1_alloc_eff;
     assign ptw1_alloc_eff = ptw1_alloc && !same_alloc_collision;
 
-    always_ff @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
-            for (int i = 0; i < 240; i++) begin
-                page_node_free[i] <= {64{1'b1}};
-            end
-            page_has_free <= {240{1'b1}};
-        end else begin
-            if (ptw0_alloc) begin
-                page_node_free[ptw0_alloc_page][ptw0_alloc_node] <= 1'b0;
-            end
-            if (ptw1_alloc_eff) begin
-                page_node_free[ptw1_alloc_page][ptw1_alloc_node] <= 1'b0;
-            end
-
-            for (int p = 0; p < 240; p++) begin
-                logic [63:0] post_clear;
-                post_clear = page_node_free[p];
-                if (ptw0_alloc && (ptw0_alloc_page == p[7:0]))
-                    post_clear[ptw0_alloc_node] = 1'b0;
-                if (ptw1_alloc_eff && (ptw1_alloc_page == p[7:0]))
-                    post_clear[ptw1_alloc_node] = 1'b0;
-                page_has_free[p] <= |post_clear;
-            end
+    always_ff @(posedge clk) begin
+        if (ptw0_alloc) begin
+            page_node_free[ptw0_alloc_page][ptw0_alloc_node] <= 1'b0;
         end
+        if (ptw1_alloc_eff) begin
+            page_node_free[ptw1_alloc_page][ptw1_alloc_node] <= 1'b0;
+        end
+
+        for (int p = 0; p < 240; p++) begin
+            logic [63:0] post_clear;
+            post_clear = page_node_free[p];
+            if (ptw0_alloc && (ptw0_alloc_page == p[7:0]))
+                post_clear[ptw0_alloc_node] = 1'b0;
+            if (ptw1_alloc_eff && (ptw1_alloc_page == p[7:0]))
+                post_clear[ptw1_alloc_node] = 1'b0;
+            page_has_free[p] <= |post_clear;
+       end
     end
 
     logic [13:0] ptw0_pt_raddr, ptw1_pt_raddr;
@@ -303,22 +303,22 @@ module mmu (
     assign ptw1_pt_we_eff = ptw1_pt_we && !same_alloc_collision;
 
     (* ramstyle = "M10K" *)
-    logic [14:0] page_table_copy_a [0:16383];
-    (* ramstyle = "M10K" *)
-    logic [14:0] page_table_copy_b [0:16383];
+    logic [14:0] page_table [0:16383];
 
     always_ff @(posedge clk) begin
         if (ptw0_pt_we) begin
-            page_table_copy_a[ptw0_pt_waddr] <= ptw0_pt_wdata;
-            page_table_copy_b[ptw0_pt_waddr] <= ptw0_pt_wdata;
-        end
-        if (ptw1_pt_we_eff) begin
-            page_table_copy_a[ptw1_pt_waddr] <= ptw1_pt_wdata;
-            page_table_copy_b[ptw1_pt_waddr] <= ptw1_pt_wdata;
+            page_table[ptw0_pt_waddr] <= ptw0_pt_wdata;
         end
 
-        ptw0_pt_rdata <= page_table_copy_a[ptw0_pt_raddr];
-        ptw1_pt_rdata <= page_table_copy_b[ptw1_pt_raddr];
+        ptw0_pt_rdata <= page_table[ptw0_pt_raddr];
+    end
+
+    always_ff @(posedge clk) begin
+        if (ptw1_pt_we_eff) begin
+            page_table[ptw1_pt_waddr] <= ptw1_pt_wdata;
+        end
+       
+        ptw1_pt_rdata <= page_table[ptw1_pt_raddr];
     end
 
     HPTW #(.LOW_FIRST(1'b1)) u_ptw0 (
@@ -463,7 +463,7 @@ module mmu (
         .mem_wdata_2       (mem_wdata_2),
         .mem_rdata_2       (mem_rdata_2),
         .mem_rdata_valid_2 (mem_rdata_valid_2),
-	.mem_wdone_2       (mem_wdone_2),
+	.mem_wdone_2	   (mem_wdone_2),
         .mem_busy_2        (mem_busy_2),
 
         .mem_addr_3        (mem_addr_3),

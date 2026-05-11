@@ -52,22 +52,38 @@ module HPTW #(
 
     logic [7:0] alloc_page;
     logic       any_page_free;
+    logic [14:0] chunk_has_free;
+    
+    always_comb begin
+        for (int i = 0; i<15; i++) begin
+            chunk_has_free[i] = |page_has_free[i*16 +: 16]; 
+        end
+    end
 
     always_comb begin
         alloc_page    = 8'd0;
         any_page_free = 1'b0;
+        
         if (LOW_FIRST) begin
-            for (int i = 0; i < 240; i++) begin
-                if (page_has_free[i] && !any_page_free) begin
-                    alloc_page    = i[7:0];
-                    any_page_free = 1'b1;
+            for (int i = 0; i<15; i++) begin
+                if (chunk_has_free[i] && !any_page_free) begin
+                    for (int j = 0; j < 16; j++) begin
+                        if (page_has_free[i*16 + j] && !any_page_free) begin
+                            alloc_page    = (i * 16) + j;
+                            any_page_free = 1'b1;
+                        end
+                    end
                 end
             end
         end else begin
-            for (int i = 239; i >= 0; i--) begin
-                if (page_has_free[i] && !any_page_free) begin
-                    alloc_page    = i[7:0];
-                    any_page_free = 1'b1;
+            for (int i = 14; i>=0; i--) begin
+                if (chunk_has_free[i] && !any_page_free) begin
+                    for (int j = 15; j >= 0; j--) begin
+                        if (page_has_free[i*16 + j] && !any_page_free) begin
+                            alloc_page    = (i * 16) + j;
+                            any_page_free = 1'b1;
+                        end
+                    end
                 end
             end
         end
@@ -77,22 +93,39 @@ module HPTW #(
 
     logic [5:0] alloc_node;
     logic       any_node_free;
+    logic [7:0] node_chunk_has_free;
+
+    always_comb begin
+        for (int i = 0; i < 8; i++) begin
+            node_chunk_has_free[i] = |node_free_slice[i*8 +: 8];
+        end
+    end
+
 
     always_comb begin
         alloc_node    = 6'd0;
         any_node_free = 1'b0;
+
         if (LOW_FIRST) begin
-            for (int j = 0; j < 64; j++) begin
-                if (node_free_slice[j] && !any_node_free) begin
-                    alloc_node    = j[5:0];
-                    any_node_free = 1'b1;
+            for (int i = 0; i < 8; i++) begin
+                if (node_chunk_has_free[i] && !any_node_free) begin
+                    for (int j = 0; j < 8; j++) begin
+                        if (node_free_slice[i*8 + j] && !any_node_free) begin
+                            alloc_node    = (i * 8) + j;
+                            any_node_free = 1'b1;
+                        end
+                    end
                 end
             end
         end else begin
-            for (int j = 63; j >= 0; j--) begin
-                if (node_free_slice[j] && !any_node_free) begin
-                    alloc_node    = j[5:0];
-                    any_node_free = 1'b1;
+            for (int i = 7; i >= 0; i--) begin
+                if (node_chunk_has_free[i] && !any_node_free) begin
+                    for (int j = 7; j >= 0; j--) begin
+                        if (node_free_slice[i*8 + j] && !any_node_free) begin
+                            alloc_node    = (i * 8) + j;
+                            any_node_free = 1'b1;
+                        end
+                    end
                 end
             end
         end
