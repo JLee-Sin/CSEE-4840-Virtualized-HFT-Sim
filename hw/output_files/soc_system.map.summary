@@ -1,0 +1,17 @@
+Analysis & Synthesis Status : Successful - Mon May 11 16:27:38 2026
+Quartus Prime Version : 22.1std.0 Build 915 10/25/2022 SC Lite Edition
+Revision Name : soc_system
+Top-level Entity Name : soc_system_top
+Family : Cyclone V
+Logic utilization (in ALMs) : N/A
+Total registers : 38135
+Total pins : 333
+Total virtual pins : 0
+Total block memory bits : 2,814,544
+Total DSP Blocks : 0
+Total HSSI RX PCSs : 0
+Total HSSI PMA RX Deserializers : 0
+Total HSSI TX PCSs : 0
+Total HSSI PMA TX Serializers : 0
+Total PLLs : 0
+Total DLLs : 1
