@@ -2,15 +2,15 @@
 // Engineers: Carlos Espinoza
 // Create Date: 04/07/2026
 // Project Name: Virtualized High Frequence Trading (HFT) Simulator
-// Design Name: Input Interface & Order Dispatcher 
-// Module:  steer_logic 
+// Design Name: Input Interface & Order Dispatcher
+// Module:  steer_logic
 // Description:
-//      This is a simple file to define parameters and structs that will be used 
-//      across the various modules in this project. 
+//      This is a simple file to define parameters and structs that will be used
+//      across the various modules in this project.
 //
 // Revision: 05/08/2026
 //////////////////////////////////////////////////////////////////////////////////
-`include "hw/sys_def.svh"
+`include "../sys_def.svh"
 
 module order_dispatcher(
     input logic 	                    clk,
@@ -23,12 +23,12 @@ module order_dispatcher(
 	input logic [`N-1:0]          sw_wr_en,           // Enable writing to FIFO tails
 	input DISPATCH_ORDER [`N-1:0] sw_wr_data,         // Order to write to FIFO tails
 	output logic [`N-1:0]         sw_wr_ready,        // Signal that FIDO is ready to write
-	
+
 	// FIFO state (per symbol/lane)
 	output logic [1:0]                  state_out,          // Current state of Dispatcher
 	output logic [`N-1:0]         fifo_empty,         // Per FIFO empty signals
 	output logic [`N-1:0]         fifo_full,          // Per FIFO full signals
-	
+
 	// Communication with Heap Engines
 	input  logic [`N-1:0]         order_in_ready,     // Per-lane ready from each engine: high when they can accept order
 	output logic [`N-1:0]         order_out_valid,    // High when order_out holds a real order (not trash)
@@ -41,30 +41,30 @@ module order_dispatcher(
     //  - No need to store symbol since each fifo stores only for one fifo.
     //  - No to sotre the timestamp since the FIFO
     //////////////////////////////////////////////////////////////////////////////////
-    
-    // FIFOs 
+
+    // FIFOs
     //  - fifo[s][i] : entry i of FIFO for symbol/lane s
     DISPATCH_ORDER fifo [`N-1:0][`FIFO_SZ-1:0];
-    
+
     // FIFO pointers
     localparam int FIFO_PTR_W = $clog2(`FIFO_SZ + 1);
     logic [FIFO_PTR_W-1:0] fifo_tail [`N-1:0];    // Write index
     logic [FIFO_PTR_W-1:0] fifo_head [`N-1:0];    // Read index
-    
+
     //////////////////////////////////////////////////////////////////////////////////
     // FSM Controller
     //////////////////////////////////////////////////////////////////////////////////
-    
+
     DISPATCH_STATE state, next_state;
-    
-    // Next State Logic 
+
+    // Next State Logic
     always_comb begin
         // Defaults
         next_state = state;
-    
-        // Transitions 
+
+        // Transitions
         // Note: tansitions to DISPATCH is SW controll to enable dipatching
-        // when FIFOS have less than FIFO_SZ orders.  
+        // when FIFOS have less than FIFO_SZ orders.
         unique case (state)
         IDLE:     next_state = sw_begin_write ?  WRITE:IDLE;
         WRITE:    next_state = sw_begin_dispatch ? DISPATCH:WRITE;
@@ -73,7 +73,7 @@ module order_dispatcher(
         default:; //Handled
         endcase
     end
-    
+
     // Update State & FIFOs
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
@@ -84,11 +84,11 @@ module order_dispatcher(
                 fifo_tail[s] <= '0; // write index
                 fifo_head[s] <= '0; // read index
             end
-            
+
         end else begin
             // Update State
             state <= next_state;
-    
+
             // Write: software writes into FIFOs and advance tail
             if (state == WRITE) begin
                 for (int s = 0; s < `N; s++) begin
@@ -98,7 +98,7 @@ module order_dispatcher(
                     end
                 end
             end
-            
+
             // Dispatch: advance head pointer only when an order is actually accepted:
             // FIFO non-empty and corresponding engine asserts ready).
             if (state == DISPATCH) begin
@@ -107,9 +107,9 @@ module order_dispatcher(
                         fifo_head[s] <= fifo_head[s] + 1'b1;
                     end
                 end
-            end 
+            end
 
-            // Reset pointers when done 
+            // Reset pointers when done
             // Helpful if we decide to do multiple batches of orders
             if (state == DONE && sw_clear_done) begin
                 for (int s = 0; s < `N; s++) begin
@@ -117,11 +117,11 @@ module order_dispatcher(
                     fifo_head[s] <= '0;
                 end
             end
-            
+
         end // else
     end // always_ff
-    
-    // Output Logic 
+
+    // Output Logic
     always_comb begin
         // Defaults
         state_out        = state;
