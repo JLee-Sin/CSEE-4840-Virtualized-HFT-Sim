@@ -222,7 +222,7 @@ module HFT_SIM #(
                     ADDR_LOG_CMD: begin
                         // bit 0 = clear
                         // bit 1 = read_req
-                        // bits [LOG_IDX_W+1:2] = read_index
+                        // bits [LOG_IDX_W_BUS+1:2] = read_index
                         if (writedata[0]) begin
                             avl_log_clear_pulse <= 1'b1;
                             avl_log_data_shadow <= '0;
@@ -230,22 +230,6 @@ module HFT_SIM #(
                             avl_log_read_pipe   <= 2'b00;
                         end else if (writedata[1]) begin
                             avl_log_read_index  <= writedata[LOG_IDX_W_BUS+1:2];
-                            avl_log_read_pulse  <= 1'b1;
-                            avl_log_data_valid  <= 1'b0;
-                            avl_log_read_pipe   <= 2'b01;
-                        end
-                    end
-                    ADDR_LOG_CMD: begin
-                        // bit 0 = clear
-                        // bit 1 = read_req
-                        // bits [LOG_IDX_W+1:2] = read_index
-                        if (writedata[0]) begin
-                            avl_log_clear_pulse <= 1'b1;
-                            avl_log_data_shadow <= '0;
-                            avl_log_data_valid  <= 1'b0;
-                            avl_log_read_pipe   <= 2'b00;
-                        end else if (writedata[1]) begin
-                            avl_log_read_index  <= writedata[LOG_IDX_W+1:2];
                             avl_log_read_pulse  <= 1'b1;
                             avl_log_data_valid  <= 1'b0;
                             avl_log_read_pipe   <= 2'b01;
