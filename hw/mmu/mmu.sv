@@ -28,7 +28,8 @@ module mmu (
     input  logic [85:0] mem_rdata_0, mem_rdata_1, mem_rdata_2, mem_rdata_3,
     input  logic        mem_rdata_valid_0, mem_rdata_valid_1,
                         mem_rdata_valid_2, mem_rdata_valid_3,
-    input  logic        mem_busy_0, mem_busy_1, mem_busy_2, mem_busy_3
+    input  logic        mem_busy_0, mem_busy_1, mem_busy_2, mem_busy_3,
+    input  logic        mem_wdone_0, mem_wdone_1, mem_wdone_2, mem_wdone_3
 );
 
     logic        req_valid [8];
@@ -302,21 +303,45 @@ module mmu (
     logic ptw1_pt_we_eff;
     assign ptw1_pt_we_eff = ptw1_pt_we && !same_alloc_collision;
 
+    // page_table replicated so PTW0 and PTW1 can each read independently.
+    // Per copy, two always blocks form Quartus's recognized TDP M10K
+    // template (Verilog-style always @posedge clk so the array has multiple
+    // drivers legally; SV always_ff requires single driver per LRM).
+    //   * Port A: read + write from the owning PTW (R+W same port).
+    //   * Port B: write-only from the other PTW.
+    // The HPTW's invariant guarantees pt_raddr == pt_waddr when pt_we
+    // (HPTW.sv: pt_we only fires in ALLOCATE; in non-IDLE pt_raddr =
+    // latched_key = pt_waddr), so Port A's RDW collapses to a same-address
+    // access.
+
+    (* ramstyle = "M10K, no_rw_check" *)
     logic [14:0] page_table_copy_a [16384] = '{default:15'd0};
+    (* ramstyle = "M10K, no_rw_check" *)
     logic [14:0] page_table_copy_b [16384] = '{default:15'd0};
 
-    always_ff @(posedge clk) begin
-        if (ptw0_pt_we) begin
-            page_table_copy_a[ptw0_pt_waddr] <= ptw0_pt_wdata;
-            page_table_copy_b[ptw0_pt_waddr] <= ptw0_pt_wdata;
-        end
-        if (ptw1_pt_we_eff) begin
-            page_table_copy_a[ptw1_pt_waddr] <= ptw1_pt_wdata;
-            page_table_copy_b[ptw1_pt_waddr] <= ptw1_pt_wdata;
-        end
+    // Single muxed address per port (canonical Quartus TDP template:
+    // ram[addr] used as both write target and read source on each port).
+    // The HPTW invariant guarantees pt_raddr == pt_waddr when pt_we, so
+    // selecting waddr on write cycles is semantically identical.
+    wire [13:0] ptw0_pt_addr = ptw0_pt_we      ? ptw0_pt_waddr : ptw0_pt_raddr;
+    wire [13:0] ptw1_pt_addr = ptw1_pt_we_eff  ? ptw1_pt_waddr : ptw1_pt_raddr;
 
-        ptw0_pt_rdata <= page_table_copy_a[ptw0_pt_raddr];
-        ptw1_pt_rdata <= page_table_copy_b[ptw1_pt_raddr];
+    // page_table_copy_a: Port A = PTW0 (R+W), Port B = PTW1 (W only)
+    always @(posedge clk) begin
+        if (ptw0_pt_we) page_table_copy_a[ptw0_pt_addr] <= ptw0_pt_wdata;
+        ptw0_pt_rdata <= page_table_copy_a[ptw0_pt_addr];
+    end
+    always @(posedge clk) begin
+        if (ptw1_pt_we_eff) page_table_copy_a[ptw1_pt_waddr] <= ptw1_pt_wdata;
+    end
+
+    // page_table_copy_b: Port A = PTW1 (R+W), Port B = PTW0 (W only)
+    always @(posedge clk) begin
+        if (ptw1_pt_we_eff) page_table_copy_b[ptw1_pt_addr] <= ptw1_pt_wdata;
+        ptw1_pt_rdata <= page_table_copy_b[ptw1_pt_addr];
+    end
+    always @(posedge clk) begin
+        if (ptw0_pt_we) page_table_copy_b[ptw0_pt_waddr] <= ptw0_pt_wdata;
     end
 
     HPTW #(.LOW_FIRST(1'b1)) u_ptw0 (

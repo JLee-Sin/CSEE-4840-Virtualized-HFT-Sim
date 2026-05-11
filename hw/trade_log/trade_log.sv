@@ -35,6 +35,7 @@ module trade_log #(
     input  logic                  sw_clear
 );
 
+    (* ramstyle = "M10K" *)
     logic [NODE_WIDTH-1:0] mem [LOG_DEPTH];
     logic [ADDR_WIDTH-1:0] wr_ptr;
     logic [CNT_WIDTH-1:0]  count_reg;

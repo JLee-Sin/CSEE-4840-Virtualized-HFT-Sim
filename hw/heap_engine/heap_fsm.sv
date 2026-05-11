@@ -29,8 +29,8 @@ module heap_fsm #(
                                              // 1 = MIN-heap (asks)
     parameter int  ENGINE_ID     = 0,        // 0..7, drives VA[31:29]
     parameter int  NODE_WIDTH    = 86,
-    parameter int  PRIVATE_NODES = 64,       // size of the private BRAM tier
-    parameter int  MAX_NODES     = 1088,     // 64 private + 1024 virtual; 1024 cap
+    parameter int  PRIVATE_NODES = 32,       // size of the private BRAM tier
+    parameter int  MAX_NODES     = 1056,     // 32 private + 1024 virtual; 1024 cap
                                              // is set by the MMU's pt_key width
     parameter int  IDX_WIDTH     = $clog2(MAX_NODES + 1)
 ) (

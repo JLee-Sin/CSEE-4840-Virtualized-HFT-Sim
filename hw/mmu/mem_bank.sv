@@ -149,7 +149,10 @@ module mem_bank #(
 	    mem_wdone	    <= 1'b0;
             
 	    if (state == DONE_READ && !latched_is_write) begin
-                mem_rdata       <= read_assemble;
+                // Bits [85:64] taken directly from active_rdata because the
+                // matching read_assemble[85:64] write fires at this same
+                // edge with NBA semantics, so read_assemble would be stale.
+                mem_rdata       <= {active_rdata[21:0], read_assemble[63:0]};
                 mem_rdata_valid <= 1'b1;
             end
 
@@ -189,6 +192,7 @@ module bram_dp_256x32 (
     output logic [31:0] rdata
 );
 
+    (* ramstyle = "M10K" *)
     logic [31:0] mem [256];
 
     always_ff @(posedge clk) begin
