@@ -60,7 +60,10 @@ module symbol_engine #(
 
     // status (to hazard unit / harness)
     output logic [13:0]           bid_size_o,
-    output logic [13:0]           ask_size_o
+    output logic [13:0]           ask_size_o,
+    // High when the trade controller is back to T_IDLE with no pending op.
+    // ANDed across all 8 engines at the top level to detect drain.
+    output logic                  engine_idle
 );
 
     // Node-field helpers (must mirror heap_fsm.sv).
@@ -459,6 +462,7 @@ module symbol_engine #(
     assign trade_out_data  = trade_event_data;
     assign bid_size_o      = bid_size;
     assign ask_size_o      = ask_size;
+    assign engine_idle     = (tstate == T_IDLE);
 
 endmodule
 

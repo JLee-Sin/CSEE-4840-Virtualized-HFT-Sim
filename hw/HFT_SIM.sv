@@ -91,6 +91,13 @@ module HFT_SIM #(
     logic [`ORDER_WIDTH-1:0]    eng_trade_data  [`N];
     logic [`N-1:0]              eng_trade_ready;
 
+    // Per-engine idle status. all_engines_idle is the AND-reduce, used by
+    // SW (via the Avalon status register) to detect that every engine has
+    // drained its trade controller back to T_IDLE.
+    logic [`N-1:0]              eng_idle;
+    logic                       all_engines_idle;
+    assign all_engines_idle = &eng_idle;
+
     // MMU to mem_bank ports
     logic [31:0]                mem_addr        [4];
     logic                       mem_we          [4];
@@ -322,7 +329,8 @@ module HFT_SIM #(
                 .mmu_resp_valid  (mmu_resp_valid[e]),
                 .mmu_resp_reject (mmu_resp_reject[e]),
                 .bid_size_o      (), // Leave disconnected for now
-                .ask_size_o      ()
+                .ask_size_o      (),
+                .engine_idle     (eng_idle[e])
             );
         end
     endgenerate
