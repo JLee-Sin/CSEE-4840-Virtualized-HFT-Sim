@@ -149,7 +149,7 @@ module mem_bank #(
 	    mem_wdone	    <= 1'b0;
             
 	    if (state == DONE_READ && !latched_is_write) begin
-                mem_rdata       <= {active_rdata[21:0], read_assemble[63:0]}:wq;
+                mem_rdata       <= {active_rdata[21:0], read_assemble[63:0]};
                 mem_rdata_valid <= 1'b1;
             end
 
