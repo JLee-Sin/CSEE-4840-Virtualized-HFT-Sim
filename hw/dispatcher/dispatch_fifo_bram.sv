@@ -32,6 +32,9 @@ module dispatch_fifo_bram #(
     // Clear batch
     input  logic             clear
 );
+    localparam int PTR_W = $clog2(DEPTH);
+    localparam int CNT_W = $clog2(DEPTH + 1);
+
     // One BRAM-backed storage array per lane
     (* ramstyle = "no_rw_check, M10K" *)
     logic [WIDTH-1:0] mem [0:DEPTH-1];

@@ -49,6 +49,7 @@ TARFILES = Makefile \
 	HFT_SIM.sv \
 	sys_def.svh \
 	dispatcher/order_dispatcher.sv \
+    dispatcher/dispatch_fifo_bram.sv \
 	heap_engine/heap_fsm.sv \
 	heap_engine/symbol_engine.sv \
 	mmu/arbiter.sv \
