@@ -31,7 +31,7 @@ module heap_fsm_tb;
     logic                  cmd_ready;
     logic                  cmd_done;
     logic [NODE_WIDTH-1:0] cmd_root_out;
-    logic [IDX_WIDTH-1:0]  size_out;
+    logic [13:0]           size_out;
 
     logic                  priv_we, priv_re;
     logic [5:0]            priv_addr;

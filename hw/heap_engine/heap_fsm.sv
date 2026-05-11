@@ -44,7 +44,7 @@ module heap_fsm #(
     output logic                  cmd_ready,
     output logic                  cmd_done,
     output logic [NODE_WIDTH-1:0] cmd_root_out,
-    output logic [IDX_WIDTH-1:0]  size_out,
+    output logic [13:0]           size_out,
 
     // private memory tier (single-cycle BRAM)
     output logic                  priv_we,
