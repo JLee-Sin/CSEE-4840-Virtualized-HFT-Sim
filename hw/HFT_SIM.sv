@@ -418,7 +418,7 @@ module HFT_SIM #(
                 .mem_wdata       (mem_wdata[b]),
                 .mem_rdata       (mem_rdata[b]),
                 .mem_rdata_valid (mem_rdata_valid[b]),
-                .mem_busy        (mem_busy[b])
+                .mem_busy        (mem_busy[b]),
                 .mem_wdone       (mem_wdone[b])
             );
         end

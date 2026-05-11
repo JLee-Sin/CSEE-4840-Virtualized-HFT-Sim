@@ -9,7 +9,7 @@
 //
 // Revision: 05/08/2026
 //////////////////////////////////////////////////////////////////////////////////
-`include "../sys_def.svh"
+`include "sys_def.svh"
 
 module order_dispatcher(
     input logic 	              clk,
