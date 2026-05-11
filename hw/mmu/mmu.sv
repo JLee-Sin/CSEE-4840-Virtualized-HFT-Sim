@@ -302,7 +302,7 @@ module mmu (
     logic ptw1_pt_we_eff;
     assign ptw1_pt_we_eff = ptw1_pt_we && !same_alloc_collision;
 
-    (* ramstyle = "M10K" *)
+    (* ramstyle = "M10K, no_rw_check" *)
     logic [14:0] page_table [0:16383];
 
     always_ff @(posedge clk) begin
