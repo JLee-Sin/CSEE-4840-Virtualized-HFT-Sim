@@ -3,7 +3,6 @@
 // Create Date: 04/07/2026
 // Project Name: Virtualized High Frequence Trading (HFT) Simulator
 // Design Name: Input Interface & Order Dispatcher
-// Module:  steer_logic
 // Description:
 //      This is a simple file to define parameters and structs that will be used
 //      across the various modules in this project.
@@ -44,6 +43,7 @@ module order_dispatcher(
 
     // FIFOs
     //  - fifo[s][i] : entry i of FIFO for symbol/lane s
+    (* ramstyle = "M10K" *)
     DISPATCH_ORDER fifo [`N-1:0][`FIFO_SZ-1:0];
 
     // FIFO pointers

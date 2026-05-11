@@ -302,8 +302,10 @@ module mmu (
     logic ptw1_pt_we_eff;
     assign ptw1_pt_we_eff = ptw1_pt_we && !same_alloc_collision;
 
-    logic [14:0] page_table_copy_a [16384] = '{default:15'd0};
-    logic [14:0] page_table_copy_b [16384] = '{default:15'd0};
+    (* ramstyle = "M10K" *)
+    logic [14:0] page_table_copy_a [0:16383];
+    (* ramstyle = "M10K" *)
+    logic [14:0] page_table_copy_b [0:16383];
 
     always_ff @(posedge clk) begin
         if (ptw0_pt_we) begin

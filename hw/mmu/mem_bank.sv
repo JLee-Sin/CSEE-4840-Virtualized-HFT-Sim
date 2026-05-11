@@ -188,8 +188,8 @@ module bram_dp_256x32 (
     input  logic [31:0] wdata,
     output logic [31:0] rdata
 );
-
-    logic [31:0] mem [256];
+    (* ramstyle = "no_rw_check, M10K" *)
+    logic [31:0] mem [0:255];
 
     always_ff @(posedge clk) begin
         if (we) mem[waddr] <= wdata;
