@@ -306,16 +306,16 @@ module mmu (
     logic [14:0] page_table [0:16383];
 
     always_ff @(posedge clk) begin
-        if (ptw0_pt_we) begin
-            page_table[ptw0_pt_waddr] <= ptw0_pt_wdata;
+        if (ptw0_pt_we && (ptw0_pt_raddr == ptw0_pt_waddr)) begin
+            page_table[ptw0_pt_raddr] <= ptw0_pt_wdata;
         end
 
         ptw0_pt_rdata <= page_table[ptw0_pt_raddr];
     end
 
     always_ff @(posedge clk) begin
-        if (ptw1_pt_we_eff) begin
-            page_table[ptw1_pt_waddr] <= ptw1_pt_wdata;
+        if (ptw1_pt_we_eff && (ptw1_pt_raddr == ptw1_pt_waddr)) begin
+            page_table[ptw1_pt_raddr] <= ptw1_pt_wdata;
         end
        
         ptw1_pt_rdata <= page_table[ptw1_pt_raddr];
