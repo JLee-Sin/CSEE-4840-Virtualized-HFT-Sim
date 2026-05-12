@@ -343,6 +343,55 @@ int hft_log_read_all(int fd, struct hft_log_entry *entries,
     return 0;
 }
 
+// Prints specified mask for all lanes: fifo full, fifo empty, or engine idle
+static void print_lane_mask(const char *label, uint32_t mask) {
+    printf("%s:", label);
+    for (int lane = 0; lane < HFT_NUM_LANES; lane++) {
+        printf(" %d=%c", lane, (mask & (1u << lane)) ? '1' : '0');
+    }
+    printf("\n");
+}
+
+// Prints the state of the Dispatcher
+static const char *disp_state_str(uint32_t state) {
+    switch (state) {
+        case HFT_STATE_IDLE:     return "IDLE";
+        case HFT_STATE_WRITE:    return "WRITE";
+        case HFT_STATE_DISPATCH: return "DISPATCH";
+        case HFT_STATE_DONE:     return "DONE";
+        default:                 return "UNKNOWN";
+    }
+}
+
+// 
+static void hft_print_progress_snapshot(int fd) {
+    struct hft_disp_status st;
+    int rc_st = hft_disp_get_status(fd, &st);
+
+    struct hft_log_info li;
+    int rc_li = hft_log_get_info(fd, &li);
+
+    if (rc_st == 0) {
+        printf("[progress] Dispatcher state=%s (%u)\n", disp_state_str(st.state), st.state);
+        print_lane_mask("[progress] FIFO empty_mask", st.empty_mask);
+        print_lane_mask("[progress] FIFO full_mask ", st.full_mask);
+        print_lane_mask("[progress] FIFO ready_mask", st.ready_mask);
+    } else {
+        printf("[progress] Dispatcher status unavailable (rc=%d)\n", rc_st);
+    }
+
+    if (rc_li == 0) {
+        printf("[progress] Trade log count=%u overflow=%u trade_done=%u\n",
+               li.count, li.overflow, li.trade_done);
+        printf("[progress] Engines: all_idle=%u idle_mask=0x%08x\n",
+               li.all_engines_idle, li.engine_idle_mask);
+    } else if (rc_li == -EAGAIN) {
+        printf("[progress] Trade logger info not ready yet (rc=%d)\n", rc_li);
+    } else {
+        printf("[progress] Trade logger info unavailable (rc=%d)\n", rc_li);
+    }
+}
+
 // Checks that HFT_SIM is done trading by
 // - Checking Order Dispatcher is the DONE state
 // - All Heap Engines are in the IDLE state
@@ -352,9 +401,19 @@ static int hft_log_wait_trade_done(int fd, int timeout_ms, int poll_ms,
 
     uint64_t deadline = (timeout_ms < 0) ? 0 : (now_ms() + (uint64_t)timeout_ms);
 
+    // Throttle printing so we don't spam the console.
+    const uint64_t print_period_ms = 250;
+    uint64_t next_print_ms = 0;
+
     for (;;) {
         struct hft_log_info li;
         int rc = hft_log_get_info(fd, &li);
+
+        uint64_t t = now_ms();
+        if (t >= next_print_ms) {
+            hft_print_progress_snapshot(fd);
+            next_print_ms = t + print_period_ms;
+        }
 
         if (rc == 0) {
             if (li.trade_done) {
