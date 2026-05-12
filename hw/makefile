@@ -57,7 +57,8 @@ TARFILES = Makefile \
 	mmu/mem_bank.sv \
 	mmu/mmu.sv \
 	trade_log/trade_aggregator.sv \
-	trade_log/trade_log.sv
+	trade_log/trade_log.sv \
+	soc_io/hex7seg.sv
 
 TARFILE = lab3-hw.tar.gz
 
@@ -198,7 +199,7 @@ $(KERNEL_DIR) :
 		$(KERNEL_REPO) $(KERNEL_DIR)
 
 # Configure the kernel.  Start from a provided default,
-# 
+#
 # Turn off version checking (makes it easier to compile kernel
 # modules and not have them complain about version)
 #

@@ -16,7 +16,11 @@ module HFT_SIM #(
     parameter int TRADE_LOG_DEPTH = 1024
 ) (
     input  logic                                    clk,
-    input  logic                                    rst_n,
+    input  logic                                    rst_n, // ignored
+
+    // DE1-Soc Interface
+    input  logic [3:0]                              KEY,
+    output logic [6:0]                              HEX0, HEX1, HEX2, HEX3, HEX4, HEX5,
 
     // Avalon Bus Interface
     // This will be the only way to communicate with the Linux core
@@ -30,8 +34,8 @@ module HFT_SIM #(
 
     // Free-running timestamp counter
     logic [31:0] now_ts;
-    always_ff @(posedge clk or negedge rst_n) begin
-        if (!rst_n) now_ts <= 32'd0;
+    always_ff @(posedge clk or negedge rst_n_i) begin
+        if (!rst_n_i) now_ts <= 32'd0;
         else        now_ts <= now_ts + 32'd1;
     end
 
@@ -45,6 +49,10 @@ module HFT_SIM #(
     logic [`N-1:0]            avl_disp_fifo_empty;
     logic [`N-1:0]            avl_disp_fifo_full;
     logic [1:0]               avl_disp_state;
+    logic disp_begin_write_pulse;
+    logic disp_begin_dispatch_pulse;
+    logic disp_clear_done_pulse;
+    logic disp_fifo_all_full;
 
     // Avalon/software wrapper -> trade_log
     localparam int LOG_IDX_W   = $clog2(TRADE_LOG_DEPTH);
@@ -109,6 +117,140 @@ module HFT_SIM #(
     logic                       mem_busy        [4];
     logic                       mem_wdone       [4];
 
+    // Async resets
+    logic rst_n_raw;
+    logic [1:0] rst_pipe;
+    logic rst_n_i;
+
+    // DE1-SoC Buttons & 7-Seg Displays
+    logic [3:0] key_s0, key_s1, key_prev;
+    logic [3:0] key_press_pulse;
+    logic key_begin_write_pulse, key_begin_dispatch_pulse;
+
+    ///////////////////////////////////////////////////////////////////////
+    // DE1-Soc Buttons7-Seg Displays
+    //
+    // Buttons (Active Low)
+    //  - KEY[0]: Async reset
+    //  - KEY[1]: Enable WRITE state in Order Dispatcher
+    //  - KEY[2]: Start / Enable DISPATCH state in Order Dispatcher
+    //  - KEY[3]: Nothing
+    //
+    // 7 Segment Displays:
+    //  -
+    ///////////////////////////////////////////////////////////////////////
+
+    // Asyn resets with KEY0
+    assign rst_n_raw = KEY[0];
+    always_ff @(posedge clk or negedge rst_n_raw) begin
+        if (!rst_n_raw) rst_pipe <= 2'b00;
+        else           rst_pipe <= {rst_pipe[0], 1'b1};
+    end
+    assign rst_n_i = rst_pipe[1];
+
+    // Button presse handling (for KEY1 and KEY2)
+    always_ff @(posedge clk or negedge rst_n_i) begin
+        if (!rst_n_i) begin
+            key_s0   <= 4'hF;
+            key_s1   <= 4'hF;
+            key_prev <= 4'hF;
+        end else begin
+            key_s0   <= KEY;
+            key_s1   <= key_s0;
+            key_prev <= key_s1;
+        end
+    end
+    assign key_press_pulse = key_prev & ~key_s1;
+    assign key_begin_write_pulse    = key_press_pulse[1];
+    assign key_begin_dispatch_pulse = key_press_pulse[2];
+
+    // Assign transition pulses to either use software or physical button signals
+    assign disp_begin_write_pulse    = avl_disp_begin_write_pulse    | key_begin_write_pulse;
+    assign disp_begin_dispatch_pulse = avl_disp_begin_dispatch_pulse | key_begin_dispatch_pulse;
+    assign disp_clear_done_pulse     = avl_disp_clear_done_pulse; // keep SW-only for now
+
+    ///////////////////////////////////////////////////////////////////////
+    // DE1-SoC 7-Segment Displays
+    //
+    // Displays do the following:
+    //  - Blinks "1" (for "press KEY1") while idle
+    //  - Shows "0" while the dispatch FIFOs are being filled
+    //  - Blinks "2" (for "press KEY2") after FIFOs get filled
+    //  - Nothing while dispatching/trading
+    //  - Blinks all segments when trades are done
+    // Note that all segments are made to blink/display the same number.
+    ///////////////////////////////////////////////////////////////////////
+    assign disp_fifo_all_full = &avl_disp_fifo_full;
+
+    // Blinking logic
+    localparam int CLK_HZ      = 50_000_000;
+    localparam int BLINK_HALF  = CLK_HZ/2; // 0.5 seconds
+    logic [$clog2(BLINK_HALF)-1:0] blink_ctr;
+    logic blink;
+    always_ff @(posedge clk or negedge rst_n_i) begin
+        if (!rst_n_i) begin
+            blink_ctr <= '0;
+            blink     <= 1'b0;
+        end else begin
+            if (blink_ctr == BLINK_HALF-1) begin
+                blink_ctr <= '0;
+                blink     <= ~blink;
+            end else begin
+                blink_ctr <= blink_ctr + 1'b1;
+            end
+        end
+    end
+
+    // 7 Segment controller
+    localparam logic [6:0] SEG_OFF = 7'b1111111; // blank
+    localparam logic [6:0] SEG_ON  = 7'b0000000; // all segments on
+    logic [3:0] ui_digit;
+    logic [6:0] seg_digit;
+    hex7seg u_hex7(.a(ui_digit), .y(seg_digit));
+    always_comb begin
+        // Default: blank everything
+        HEX0 = SEG_OFF; HEX1 = SEG_OFF; HEX2 = SEG_OFF;
+        HEX3 = SEG_OFF; HEX4 = SEG_OFF; HEX5 = SEG_OFF;
+        ui_digit = 4'd0;
+
+        if (trade_done) begin
+            // Blink all segments when trading is done
+            if (blink) begin
+                HEX0 = SEG_ON; HEX1 = SEG_ON; HEX2 = SEG_ON;
+                HEX3 = SEG_ON; HEX4 = SEG_ON; HEX5 = SEG_ON;
+            end
+        end else begin
+            unique case (avl_disp_state)
+                IDLE: begin
+                    // Blink "1"
+                    ui_digit = 4'd1;
+                    if (blink) begin
+                        HEX0 = seg_digit; HEX1 = seg_digit; HEX2 = seg_digit;
+                        HEX3 = seg_digit; HEX4 = seg_digit; HEX5 = seg_digit;
+                    end
+                end
+                WRITE: begin
+                    if (!disp_fifo_all_full) begin
+                        // Display all 0
+                        ui_digit = 4'd0;
+                        HEX0 = seg_digit; HEX1 = seg_digit; HEX2 = seg_digit;
+                        HEX3 = seg_digit; HEX4 = seg_digit; HEX5 = seg_digit;
+                    end else begin
+                        // Blink "2" once full
+                        ui_digit = 4'd2;
+                        if (blink) begin
+                            HEX0 = seg_digit; HEX1 = seg_digit; HEX2 = seg_digit;
+                            HEX3 = seg_digit; HEX4 = seg_digit; HEX5 = seg_digit;
+                        end
+                    end
+                end
+                default: begin
+                    // blank
+                end
+            endcase
+        end
+    end
+
     ///////////////////////////////////////////////////////////////////////
     // Translation Wrapper
     //
@@ -133,10 +275,9 @@ module HFT_SIM #(
     localparam int ADDR_LOG_DATA1 = 5'd13; // 0x34
     localparam int ADDR_LOG_DATA2 = 5'd14; // 0x38
 
-
     // Decode Avalon writes into dispatcher and trade-log controls
-    always_ff @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
+    always_ff @(posedge clk or negedge rst_n_i) begin
+        if (!rst_n_i) begin
             avl_disp_begin_write_pulse    <= 1'b0;
             avl_disp_begin_dispatch_pulse <= 1'b0;
             avl_disp_clear_done_pulse     <= 1'b0;
@@ -256,7 +397,7 @@ module HFT_SIM #(
         readdata = 32'd0;
 
         if (chipselect && read) begin
-            unique case (address)
+            case (address)
                 ADDR_STATUS: readdata = {6'd0,
                                 avl_disp_fifo_full,
                                 avl_disp_fifo_empty,
@@ -286,8 +427,6 @@ module HFT_SIM #(
         end
     end
 
-    //  
-    
     ///////////////////////////////////////////////////////////////////////
     // Module Instantiation & Connection
     ///////////////////////////////////////////////////////////////////////
@@ -295,12 +434,12 @@ module HFT_SIM #(
     // Order Dispatcher
     order_dispatcher u_dispatcher (
         .clk              (clk),
-        .rst_n            (rst_n),
+        .rst_n            (rst_n_i),
 
         // Avalon/software wrapper controls
-        .sw_begin_write    (avl_disp_begin_write_pulse),
-        .sw_begin_dispatch (avl_disp_begin_dispatch_pulse),
-        .sw_clear_done     (avl_disp_clear_done_pulse),
+        .sw_begin_write    (disp_begin_write_pulse),
+        .sw_begin_dispatch (disp_begin_dispatch_pulse),
+        .sw_clear_done     (disp_clear_done_pulse),
         .sw_wr_en          (avl_disp_push_en),
         .sw_wr_data        (avl_disp_push_data),
         .sw_wr_ready       (avl_disp_push_ready),
@@ -323,7 +462,7 @@ module HFT_SIM #(
         for (e = 0; e < `N; e++) begin : g_engines
             symbol_engine #(.ENGINE_ID(e)) u_engine (
                 .clk             (clk),
-                .rst_n           (rst_n),
+                .rst_n           (rst_n_i),
                 .now_ts          (now_ts),
                 .order_in_valid  (order_in_valid[e]),
                 .order_in_data   (order_in_data[e]),
@@ -349,7 +488,7 @@ module HFT_SIM #(
     // MMU (8 individual client ports, 4 mem_bank ports)
     mmu u_mmu (
         .clk    (clk),
-        .rst_n  (rst_n),
+        .rst_n  (rst_n_i),
 
         .req_valid_0(mmu_req_valid[0]), .req_valid_1(mmu_req_valid[1]),
         .req_valid_2(mmu_req_valid[2]), .req_valid_3(mmu_req_valid[3]),
@@ -422,7 +561,7 @@ module HFT_SIM #(
         for (b = 0; b < 4; b++) begin : g_banks
             mem_bank #(.BANK_ID(b)) u_bank (
                 .clk             (clk),
-                .rst_n           (rst_n),
+                .rst_n           (rst_n_i),
                 .mem_addr        (mem_addr[b]),
                 .mem_we          (mem_we[b]),
                 .mem_re          (mem_re[b]),
@@ -445,7 +584,7 @@ module HFT_SIM #(
 
     trade_aggregator #(.N(`N), .NODE_WIDTH(`ORDER_WIDTH)) u_trade_agg (
         .clk             (clk),
-        .rst_n           (rst_n),
+        .rst_n           (rst_n_i),
         .eng_trade_valid (eng_trade_valid),
         .eng_trade_data  (eng_trade_data),
         .eng_trade_ready (eng_trade_ready),
@@ -459,7 +598,7 @@ module HFT_SIM #(
         .LOG_DEPTH  (TRADE_LOG_DEPTH)
     ) u_trade_log (
         .clk            (clk),
-        .rst_n          (rst_n),
+        .rst_n          (rst_n_i),
         .trade_in_valid (agg_trade_valid),
         .trade_in_data  (agg_trade_data),
         .trade_in_ready (agg_trade_ready),

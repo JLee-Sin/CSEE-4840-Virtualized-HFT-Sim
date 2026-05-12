@@ -179,130 +179,147 @@ module soc_system_top(
 
 );
 
-   soc_system soc_system0(
-     .clk_clk                      ( CLOCK_50 ),
-     .reset_reset_n                ( 1'b1 ),
-                          
-     .hps_ddr3_mem_a               ( HPS_DDR3_ADDR ),
-     .hps_ddr3_mem_ba              ( HPS_DDR3_BA ),
-     .hps_ddr3_mem_ck              ( HPS_DDR3_CK_P ),
-     .hps_ddr3_mem_ck_n            ( HPS_DDR3_CK_N ),
-     .hps_ddr3_mem_cke             ( HPS_DDR3_CKE ),
-     .hps_ddr3_mem_cs_n            ( HPS_DDR3_CS_N ),
-     .hps_ddr3_mem_ras_n           ( HPS_DDR3_RAS_N ),
-     .hps_ddr3_mem_cas_n           ( HPS_DDR3_CAS_N ),
-     .hps_ddr3_mem_we_n            ( HPS_DDR3_WE_N ),
-     .hps_ddr3_mem_reset_n         ( HPS_DDR3_RESET_N ),
-     .hps_ddr3_mem_dq              ( HPS_DDR3_DQ ),
-     .hps_ddr3_mem_dqs             ( HPS_DDR3_DQS_P ),
-     .hps_ddr3_mem_dqs_n           ( HPS_DDR3_DQS_N ),
-     .hps_ddr3_mem_odt             ( HPS_DDR3_ODT ),
-     .hps_ddr3_mem_dm              ( HPS_DDR3_DM ),
-     .hps_ddr3_oct_rzqin           ( HPS_DDR3_RZQ ),
+    // HFT_SIM exported conduit wires (from Platform Designer)
+    wire [3:0] hft_key;
+    wire [6:0] hft_hex0, hft_hex1, hft_hex2, hft_hex3, hft_hex4, hft_hex5;
+
+
+    soc_system soc_system0(
+        .clk_clk                      ( CLOCK_50 ),
+        .reset_reset_n                ( 1'b1 ),
+                            
+        .hps_ddr3_mem_a               ( HPS_DDR3_ADDR ),
+        .hps_ddr3_mem_ba              ( HPS_DDR3_BA ),
+        .hps_ddr3_mem_ck              ( HPS_DDR3_CK_P ),
+        .hps_ddr3_mem_ck_n            ( HPS_DDR3_CK_N ),
+        .hps_ddr3_mem_cke             ( HPS_DDR3_CKE ),
+        .hps_ddr3_mem_cs_n            ( HPS_DDR3_CS_N ),
+        .hps_ddr3_mem_ras_n           ( HPS_DDR3_RAS_N ),
+        .hps_ddr3_mem_cas_n           ( HPS_DDR3_CAS_N ),
+        .hps_ddr3_mem_we_n            ( HPS_DDR3_WE_N ),
+        .hps_ddr3_mem_reset_n         ( HPS_DDR3_RESET_N ),
+        .hps_ddr3_mem_dq              ( HPS_DDR3_DQ ),
+        .hps_ddr3_mem_dqs             ( HPS_DDR3_DQS_P ),
+        .hps_ddr3_mem_dqs_n           ( HPS_DDR3_DQS_N ),
+        .hps_ddr3_mem_odt             ( HPS_DDR3_ODT ),
+        .hps_ddr3_mem_dm              ( HPS_DDR3_DM ),
+        .hps_ddr3_oct_rzqin           ( HPS_DDR3_RZQ ),
+        
+        .hps_hps_io_emac1_inst_TX_CLK ( HPS_ENET_GTX_CLK ),
+        .hps_hps_io_emac1_inst_TXD0   ( HPS_ENET_TX_DATA[0] ),
+        .hps_hps_io_emac1_inst_TXD1   ( HPS_ENET_TX_DATA[1] ),
+        .hps_hps_io_emac1_inst_TXD2   ( HPS_ENET_TX_DATA[2] ),
+        .hps_hps_io_emac1_inst_TXD3   ( HPS_ENET_TX_DATA[3] ),
+        .hps_hps_io_emac1_inst_RXD0   ( HPS_ENET_RX_DATA[0] ),
+        .hps_hps_io_emac1_inst_MDIO   ( HPS_ENET_MDIO  ),
+        .hps_hps_io_emac1_inst_MDC    ( HPS_ENET_MDC   ),
+        .hps_hps_io_emac1_inst_RX_CTL ( HPS_ENET_RX_DV ),
+        .hps_hps_io_emac1_inst_TX_CTL ( HPS_ENET_TX_EN ),
+        .hps_hps_io_emac1_inst_RX_CLK ( HPS_ENET_RX_CLK ),
+        .hps_hps_io_emac1_inst_RXD1   ( HPS_ENET_RX_DATA[1]  ),
+        .hps_hps_io_emac1_inst_RXD2   ( HPS_ENET_RX_DATA[2]  ),
+        .hps_hps_io_emac1_inst_RXD3   ( HPS_ENET_RX_DATA[3]  ),
+                
+        .hps_hps_io_sdio_inst_CMD     ( HPS_SD_CMD          ),
+        .hps_hps_io_sdio_inst_D0      ( HPS_SD_DATA[0]      ),
+        .hps_hps_io_sdio_inst_D1      ( HPS_SD_DATA[1]      ),
+        .hps_hps_io_sdio_inst_CLK     ( HPS_SD_CLK          ),
+        .hps_hps_io_sdio_inst_D2      ( HPS_SD_DATA[2]      ),
+        .hps_hps_io_sdio_inst_D3      ( HPS_SD_DATA[3]      ),
+        
+        .hps_hps_io_usb1_inst_D0      ( HPS_USB_DATA[0]     ),
+        .hps_hps_io_usb1_inst_D1      ( HPS_USB_DATA[1]     ),
+        .hps_hps_io_usb1_inst_D2      ( HPS_USB_DATA[2]     ),
+        .hps_hps_io_usb1_inst_D3      ( HPS_USB_DATA[3]     ),
+        .hps_hps_io_usb1_inst_D4      ( HPS_USB_DATA[4]     ),
+        .hps_hps_io_usb1_inst_D5      ( HPS_USB_DATA[5]     ),
+        .hps_hps_io_usb1_inst_D6      ( HPS_USB_DATA[6]     ),
+        .hps_hps_io_usb1_inst_D7      ( HPS_USB_DATA[7]     ),
+        .hps_hps_io_usb1_inst_CLK     ( HPS_USB_CLKOUT      ),
+        .hps_hps_io_usb1_inst_STP     ( HPS_USB_STP         ),
+        .hps_hps_io_usb1_inst_DIR     ( HPS_USB_DIR         ),
+        .hps_hps_io_usb1_inst_NXT     ( HPS_USB_NXT         ),
+        
+        .hps_hps_io_spim1_inst_CLK    ( HPS_SPIM_CLK  ),
+        .hps_hps_io_spim1_inst_MOSI   ( HPS_SPIM_MOSI ),
+        .hps_hps_io_spim1_inst_MISO   ( HPS_SPIM_MISO ),
+        .hps_hps_io_spim1_inst_SS0    ( HPS_SPIM_SS   ),
+        
+        .hps_hps_io_uart0_inst_RX     ( HPS_UART_RX     ),
+        .hps_hps_io_uart0_inst_TX     ( HPS_UART_TX     ),
+        
+        .hps_hps_io_i2c0_inst_SDA     ( HPS_I2C1_SDAT     ),
+        .hps_hps_io_i2c0_inst_SCL     ( HPS_I2C1_SCLK     ),
+        
+        .hps_hps_io_i2c1_inst_SDA     ( HPS_I2C2_SDAT     ),
+        .hps_hps_io_i2c1_inst_SCL     ( HPS_I2C2_SCLK     ),
+        
+        .hps_hps_io_gpio_inst_GPIO09  ( HPS_CONV_USB_N ),
+        .hps_hps_io_gpio_inst_GPIO35  ( HPS_ENET_INT_N ),
+        .hps_hps_io_gpio_inst_GPIO40  ( HPS_LTC_GPIO ),
+    
+        .hps_hps_io_gpio_inst_GPIO48  ( HPS_I2C_CONTROL ),
+        .hps_hps_io_gpio_inst_GPIO53  ( HPS_LED ),
+        .hps_hps_io_gpio_inst_GPIO54  ( HPS_KEY ),
+        .hps_hps_io_gpio_inst_GPIO61  ( HPS_GSENSOR_INT ), 
+
+        // HFT Signals
+        .hft_sim_0_soc_io_KEY  ( hft_key  ),
+        .hft_sim_0_soc_io_HEX0 ( hft_hex0 ),
+        .hft_sim_0_soc_io_HEX1 ( hft_hex1 ),
+        .hft_sim_0_soc_io_HEX2 ( hft_hex2 ),
+        .hft_sim_0_soc_io_HEX3 ( hft_hex3 ),
+        .hft_sim_0_soc_io_HEX4 ( hft_hex4 ),
+        .hft_sim_0_soc_io_HEX5 ( hft_hex5 )
+    );
+    
+        // The following quiet the "no driver" warnings for output
+        // pins and should be removed if you use any of these peripherals
+        
+        assign ADC_CS_N = SW[1] ? SW[0] : 1'bZ;
+        assign ADC_DIN = SW[0];
+        assign ADC_SCLK = SW[0];
+        
+        assign AUD_ADCLRCK = SW[1] ? SW[0] : 1'bZ;
+        assign AUD_BCLK = SW[1] ? SW[0] : 1'bZ;
+        assign AUD_DACDAT = SW[0];
+        assign AUD_DACLRCK = SW[1] ? SW[0] : 1'bZ;
+        assign AUD_XCK = SW[0];      
+        
+        assign DRAM_ADDR = { 13{ SW[0] } };
+        assign DRAM_BA = { 2{ SW[0] } };
+        assign DRAM_DQ = SW[1] ? { 16{ SW[0] } } : { 16{ 1'bZ } };
+        assign {DRAM_CAS_N, DRAM_CKE, DRAM_CLK, DRAM_CS_N,
+                DRAM_LDQM, DRAM_RAS_N, DRAM_UDQM, DRAM_WE_N} = { 8{SW[0]} };
+        
+        assign FAN_CTRL = SW[0];
+        
+        assign FPGA_I2C_SCLK = SW[0];
+        assign FPGA_I2C_SDAT = SW[1] ? SW[0] : 1'bZ;
+        
+        assign GPIO_0 = SW[1] ? { 36{ SW[0] } } : { 36{ 1'bZ } };
+        assign GPIO_1 = SW[1] ? { 36{ SW[0] } } : { 36{ 1'bZ } };   
+        
+        assign IRDA_TXD = SW[0];
+        
+        assign LEDR = { 10{SW[7]} };
+        
+        assign PS2_CLK = SW[1] ? SW[0] : 1'bZ;
+        assign PS2_CLK2 = SW[1] ? SW[0] : 1'bZ;
+        assign PS2_DAT = SW[1] ? SW[0] : 1'bZ;
+        assign PS2_DAT2 = SW[1] ? SW[0] : 1'bZ;
+        
+        assign TD_RESET_N = SW[0];
+
+        // Drive HFT key input from the board keys
+        assign hft_key = KEY;
      
-     .hps_hps_io_emac1_inst_TX_CLK ( HPS_ENET_GTX_CLK ),
-     .hps_hps_io_emac1_inst_TXD0   ( HPS_ENET_TX_DATA[0] ),
-     .hps_hps_io_emac1_inst_TXD1   ( HPS_ENET_TX_DATA[1] ),
-     .hps_hps_io_emac1_inst_TXD2   ( HPS_ENET_TX_DATA[2] ),
-     .hps_hps_io_emac1_inst_TXD3   ( HPS_ENET_TX_DATA[3] ),
-     .hps_hps_io_emac1_inst_RXD0   ( HPS_ENET_RX_DATA[0] ),
-     .hps_hps_io_emac1_inst_MDIO   ( HPS_ENET_MDIO  ),
-     .hps_hps_io_emac1_inst_MDC    ( HPS_ENET_MDC   ),
-     .hps_hps_io_emac1_inst_RX_CTL ( HPS_ENET_RX_DV ),
-     .hps_hps_io_emac1_inst_TX_CTL ( HPS_ENET_TX_EN ),
-     .hps_hps_io_emac1_inst_RX_CLK ( HPS_ENET_RX_CLK ),
-     .hps_hps_io_emac1_inst_RXD1   ( HPS_ENET_RX_DATA[1]  ),
-     .hps_hps_io_emac1_inst_RXD2   ( HPS_ENET_RX_DATA[2]  ),
-     .hps_hps_io_emac1_inst_RXD3   ( HPS_ENET_RX_DATA[3]  ),
-              
-     .hps_hps_io_sdio_inst_CMD     ( HPS_SD_CMD          ),
-     .hps_hps_io_sdio_inst_D0      ( HPS_SD_DATA[0]      ),
-     .hps_hps_io_sdio_inst_D1      ( HPS_SD_DATA[1]      ),
-     .hps_hps_io_sdio_inst_CLK     ( HPS_SD_CLK          ),
-     .hps_hps_io_sdio_inst_D2      ( HPS_SD_DATA[2]      ),
-     .hps_hps_io_sdio_inst_D3      ( HPS_SD_DATA[3]      ),
-     
-     .hps_hps_io_usb1_inst_D0      ( HPS_USB_DATA[0]     ),
-     .hps_hps_io_usb1_inst_D1      ( HPS_USB_DATA[1]     ),
-     .hps_hps_io_usb1_inst_D2      ( HPS_USB_DATA[2]     ),
-     .hps_hps_io_usb1_inst_D3      ( HPS_USB_DATA[3]     ),
-     .hps_hps_io_usb1_inst_D4      ( HPS_USB_DATA[4]     ),
-     .hps_hps_io_usb1_inst_D5      ( HPS_USB_DATA[5]     ),
-     .hps_hps_io_usb1_inst_D6      ( HPS_USB_DATA[6]     ),
-     .hps_hps_io_usb1_inst_D7      ( HPS_USB_DATA[7]     ),
-     .hps_hps_io_usb1_inst_CLK     ( HPS_USB_CLKOUT      ),
-     .hps_hps_io_usb1_inst_STP     ( HPS_USB_STP         ),
-     .hps_hps_io_usb1_inst_DIR     ( HPS_USB_DIR         ),
-     .hps_hps_io_usb1_inst_NXT     ( HPS_USB_NXT         ),
-     
-     .hps_hps_io_spim1_inst_CLK    ( HPS_SPIM_CLK  ),
-     .hps_hps_io_spim1_inst_MOSI   ( HPS_SPIM_MOSI ),
-     .hps_hps_io_spim1_inst_MISO   ( HPS_SPIM_MISO ),
-     .hps_hps_io_spim1_inst_SS0    ( HPS_SPIM_SS   ),
-     
-     .hps_hps_io_uart0_inst_RX     ( HPS_UART_RX     ),
-     .hps_hps_io_uart0_inst_TX     ( HPS_UART_TX     ),
-     
-     .hps_hps_io_i2c0_inst_SDA     ( HPS_I2C1_SDAT     ),
-     .hps_hps_io_i2c0_inst_SCL     ( HPS_I2C1_SCLK     ),
-     
-     .hps_hps_io_i2c1_inst_SDA     ( HPS_I2C2_SDAT     ),
-     .hps_hps_io_i2c1_inst_SCL     ( HPS_I2C2_SCLK     ),
-     
-     .hps_hps_io_gpio_inst_GPIO09  ( HPS_CONV_USB_N ),
-     .hps_hps_io_gpio_inst_GPIO35  ( HPS_ENET_INT_N ),
-     .hps_hps_io_gpio_inst_GPIO40  ( HPS_LTC_GPIO ),
-
-     .hps_hps_io_gpio_inst_GPIO48  ( HPS_I2C_CONTROL ),
-     .hps_hps_io_gpio_inst_GPIO53  ( HPS_LED ),
-     .hps_hps_io_gpio_inst_GPIO54  ( HPS_KEY ),
-     .hps_hps_io_gpio_inst_GPIO61  ( HPS_GSENSOR_INT ), 
-          
-  );
-
-   // The following quiet the "no driver" warnings for output
-   // pins and should be removed if you use any of these peripherals
-
-   assign ADC_CS_N = SW[1] ? SW[0] : 1'bZ;
-   assign ADC_DIN = SW[0];
-   assign ADC_SCLK = SW[0];
-   
-   assign AUD_ADCLRCK = SW[1] ? SW[0] : 1'bZ;
-   assign AUD_BCLK = SW[1] ? SW[0] : 1'bZ;
-   assign AUD_DACDAT = SW[0];
-   assign AUD_DACLRCK = SW[1] ? SW[0] : 1'bZ;
-   assign AUD_XCK = SW[0];      
-
-   assign DRAM_ADDR = { 13{ SW[0] } };
-   assign DRAM_BA = { 2{ SW[0] } };
-   assign DRAM_DQ = SW[1] ? { 16{ SW[0] } } : { 16{ 1'bZ } };
-   assign {DRAM_CAS_N, DRAM_CKE, DRAM_CLK, DRAM_CS_N,
-           DRAM_LDQM, DRAM_RAS_N, DRAM_UDQM, DRAM_WE_N} = { 8{SW[0]} };
-
-   assign FAN_CTRL = SW[0];
-
-   assign FPGA_I2C_SCLK = SW[0];
-   assign FPGA_I2C_SDAT = SW[1] ? SW[0] : 1'bZ;
-
-   assign GPIO_0 = SW[1] ? { 36{ SW[0] } } : { 36{ 1'bZ } };
-   assign GPIO_1 = SW[1] ? { 36{ SW[0] } } : { 36{ 1'bZ } };   
-
-   assign HEX0 = { 7{ SW[1] } };
-   assign HEX1 = { 7{ SW[2] } };
-   assign HEX2 = { 7{ SW[3] } };
-   assign HEX3 = { 7{ SW[4] } };
-   assign HEX4 = { 7{ SW[5] } };
-   assign HEX5 = { 7{ SW[6] } };
-
-   assign IRDA_TXD = SW[0];
-
-   assign LEDR = { 10{SW[7]} };
-
-   assign PS2_CLK = SW[1] ? SW[0] : 1'bZ;
-   assign PS2_CLK2 = SW[1] ? SW[0] : 1'bZ;
-   assign PS2_DAT = SW[1] ? SW[0] : 1'bZ;
-   assign PS2_DAT2 = SW[1] ? SW[0] : 1'bZ;
-
-   assign TD_RESET_N = SW[0];
-                                                                  
-endmodule
+        // Drive the board 7-segs from the HFT outputs
+        assign HEX0 = hft_hex0;
+        assign HEX1 = hft_hex1;
+        assign HEX2 = hft_hex2;
+        assign HEX3 = hft_hex3;
+        assign HEX4 = hft_hex4;
+        assign HEX5 = hft_hex5;
+                                                                    
+    endmodule
