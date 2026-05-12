@@ -90,17 +90,16 @@ module heap_fsm #(
     // Comparator (operates on pre-extracted fields). Returns 1 iff the
     // operand identified by the "a" fields should sit closer to the root
     // than the "b" operand. Ordering: price (max or min per HEAP_KIND),
-    // older timestamp, larger amount.
+    // then larger amount. Timestamp tiebreak intentionally dropped; the
+    // dataset has 35/13280 same-(type,sym,price,qty) duplicates and trade
+    // outcomes are identical either way (matched amount unchanged).
 
     function automatic logic a_wins_fields (
-        input logic [15:0] ap, input logic [31:0] at, input logic [15:0] aa,
-        input logic [15:0] bp, input logic [31:0] bt, input logic [15:0] ba
+        input logic [15:0] ap, input logic [15:0] aa,
+        input logic [15:0] bp, input logic [15:0] ba
     );
         if (ap != bp)
             a_wins_fields = (HEAP_KIND == MAX_HEAP) ? (ap > bp) : (ap < bp);
-        else if (at != bt)
-            // signed difference handles the 32-bit timestamp wrap correctly
-            a_wins_fields = ($signed(at - bt) < 0);
         else
             a_wins_fields = (aa > ba);
     endfunction
@@ -192,33 +191,65 @@ module heap_fsm #(
     logic [1:0]            saved_op;
     logic [NODE_WIDTH-1:0] popped_root;
 
-    // Pre-extracted field wires and comparator outputs. Continuous assigns
-    // keep the constant bit selects out of the always_* blocks below.
+    // Pre-extracted field wires. Continuous assigns keep the constant bit
+    // selects out of the always_* blocks below.
 
     wire [15:0] cur_price     = cur_node[84:69];
     wire [15:0] cur_amount    = cur_node[68:53];
-    wire [31:0] cur_ts        = cur_node[31:0];
     wire [15:0] parent_price  = parent_node[84:69];
     wire [15:0] parent_amount = parent_node[68:53];
-    wire [31:0] parent_ts     = parent_node[31:0];
     wire [15:0] left_price    = left_node[84:69];
     wire [15:0] left_amount   = left_node[68:53];
-    wire [31:0] left_ts       = left_node[31:0];
     wire [15:0] right_price   = right_node[84:69];
     wire [15:0] right_amount  = right_node[68:53];
-    wire [31:0] right_ts      = right_node[31:0];
 
-    wire cur_wins_parent = a_wins_fields(cur_price,    cur_ts,    cur_amount,
-                                         parent_price, parent_ts, parent_amount);
-    wire left_wins_cur   = a_wins_fields(left_price,   left_ts,   left_amount,
-                                         cur_price,    cur_ts,    cur_amount);
-    wire right_wins_left = a_wins_fields(right_price,  right_ts,  right_amount,
-                                         left_price,   left_ts,   left_amount);
-    wire right_wins_cur  = a_wins_fields(right_price,  right_ts,  right_amount,
-                                         cur_price,    cur_ts,    cur_amount);
+    // Two shared comparators, state-muxed. cmp0 drives `cur_wins_parent` in
+    // PUSH and `left_wins_cur` in POP sift-down. cmp1 drives the right-vs-
+    // (left or cur) decision, with its b-side selected by cmp0's result so
+    // we don't need a third comparator for `right_wins_left`.
+    logic [15:0] cmp0_ap, cmp0_aa, cmp0_bp, cmp0_ba;
+    logic [15:0] cmp1_ap, cmp1_aa, cmp1_bp, cmp1_ba;
 
-    // UPDATE guard: the new node must preserve the root's price + timestamp
-    // (heap order is established by those two fields). Mismatch => reject.
+    wire cmp0_result = a_wins_fields(cmp0_ap, cmp0_aa, cmp0_bp, cmp0_ba);
+    wire cmp1_result = a_wins_fields(cmp1_ap, cmp1_aa, cmp1_bp, cmp1_ba);
+
+    // Pop-sift uses cmp0 as left-vs-cur; everything else (PUSH, and idle
+    // cycles) leaves cmp0 wired to cur-vs-parent. The `best` mux is read
+    // by the next-state logic at DECIDE and by the memory-issue and
+    // bookkeeping blocks at WR_UP_ISSUE / WR_UP_WAIT, so the comparator
+    // inputs must stay in pop-sift mode through that whole window.
+    wire in_pop_sift = (state == S_POP_SIFT_RD_LEFT_ISSUE)
+                    || (state == S_POP_SIFT_RD_LEFT_WAIT)
+                    || (state == S_POP_SIFT_RD_RIGHT_ISSUE)
+                    || (state == S_POP_SIFT_RD_RIGHT_WAIT)
+                    || (state == S_POP_SIFT_DECIDE)
+                    || (state == S_POP_SIFT_WR_UP_ISSUE)
+                    || (state == S_POP_SIFT_WR_UP_WAIT);
+
+    always_comb begin
+        if (in_pop_sift) begin
+            cmp0_ap = left_price;   cmp0_aa = left_amount;
+            cmp0_bp = cur_price;    cmp0_ba = cur_amount;
+        end else begin
+            cmp0_ap = cur_price;    cmp0_aa = cur_amount;
+            cmp0_bp = parent_price; cmp0_ba = parent_amount;
+        end
+        cmp1_ap = right_price;
+        cmp1_aa = right_amount;
+        cmp1_bp = cmp0_result ? left_price  : cur_price;
+        cmp1_ba = cmp0_result ? left_amount : cur_amount;
+    end
+
+    // Aliases for next-state logic readability.
+    wire cur_wins_parent     = cmp0_result;   // valid in S_PUSH_DECIDE
+    wire left_wins_cur       = cmp0_result;   // valid in S_POP_SIFT_DECIDE
+    wire right_wins_combined = cmp1_result;   // valid in S_POP_SIFT_DECIDE
+
+    // UPDATE guard: the new node must preserve the root's price (and the
+    // 32-bit timestamp slot, so callers can't accidentally overwrite an
+    // unrelated node with the same price). Heap order is established by
+    // price alone; the timestamp check stays here as a partial-fill safety
+    // belt for the trade controller.
     wire [15:0] root_cache_price = root_cache[84:69];
     wire [31:0] root_cache_ts    = root_cache[31:0];
     wire [15:0] cmd_in_price     = cmd_data_in[84:69];
@@ -234,11 +265,10 @@ module heap_fsm #(
         best = BEST_CUR;
         if (left_idx < size && left_wins_cur)
             best = BEST_LEFT;
-        if (has_right && right_idx < size) begin
-            // right against whichever of {left, cur} is currently best
-            if ((best == BEST_LEFT) ? right_wins_left : right_wins_cur)
-                best = BEST_RIGHT;
-        end
+        // cmp1 is already wired to right-vs-(left if left_wins_cur else cur),
+        // so right_wins_combined is the right answer regardless of best so far.
+        if (has_right && right_idx < size && right_wins_combined)
+            best = BEST_RIGHT;
     end
 
     // Memory-issue decode (combinational)

@@ -323,24 +323,28 @@ module mmu_tb;
         // (the one Jayden's attempt-1 leaves the page_has_free update
         // out of). Then read all 64 back and verify integrity.
         $display("-- T9: 64 interleaved VAs across engines 0..3, both heaps");
-        for (i = 0; i < 64; i++) begin
-            int eng    = i % 4;
-            logic kind = (i / 4) % 2;
-            int idx    = 400 + (i / 8);
-            va = make_va(eng, kind, idx);
-            do_write(eng, va, {54'd0, 32'hABCD_0000} | 86'(i), rejected);
-            check($sformatf("T9 i=%0d eng=%0d kind=%0b idx=%0d write ok",
-                            i, eng, kind, idx), !rejected);
-        end
-        for (i = 0; i < 64; i++) begin
-            int eng    = i % 4;
-            logic kind = (i / 4) % 2;
-            int idx    = 400 + (i / 8);
-            va = make_va(eng, kind, idx);
-            do_read(eng, va, rd_data, rejected);
-            check($sformatf("T9 i=%0d read ok", i), !rejected);
-            check($sformatf("T9 i=%0d data preserved", i),
-                  rd_data == ({54'd0, 32'hABCD_0000} | 86'(i)));
+        begin
+            int   t9_eng, t9_idx;
+            logic t9_kind;
+            for (i = 0; i < 64; i++) begin
+                t9_eng  = i % 4;
+                t9_kind = (i / 4) % 2;
+                t9_idx  = 400 + (i / 8);
+                va = make_va(t9_eng, t9_kind, t9_idx);
+                do_write(t9_eng, va, {54'd0, 32'hABCD_0000} | 86'(i), rejected);
+                check($sformatf("T9 i=%0d eng=%0d kind=%0b idx=%0d write ok",
+                                i, t9_eng, t9_kind, t9_idx), !rejected);
+            end
+            for (i = 0; i < 64; i++) begin
+                t9_eng  = i % 4;
+                t9_kind = (i / 4) % 2;
+                t9_idx  = 400 + (i / 8);
+                va = make_va(t9_eng, t9_kind, t9_idx);
+                do_read(t9_eng, va, rd_data, rejected);
+                check($sformatf("T9 i=%0d read ok", i), !rejected);
+                check($sformatf("T9 i=%0d data preserved", i),
+                      rd_data == ({54'd0, 32'hABCD_0000} | 86'(i)));
+            end
         end
 
         // -------- T10: repeated update on same VAs (heavy page_table churn) --------
