@@ -10,6 +10,7 @@
 #include <sys/ioctl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <signal.h>
 
 #include "HFT_drivers.h"
 
@@ -21,6 +22,13 @@
 
 // Driver
 int hft_sim_fd;
+
+// Ctrl+C handling
+static volatile sig_atomic_t g_stop = 0;
+static void on_sigint(int signo) {
+    (void)signo;
+    g_stop = 1;
+}
 
 // Internal Structs
 typedef struct {
@@ -406,6 +414,13 @@ static int hft_log_wait_trade_done(FILE *progress_fp, int fd, int timeout_ms, in
     uint64_t next_print_ms = 0;
 
     for (;;) {
+        if (g_stop) {
+            if (progress_fp) {
+                fprintf(progress_fp, "[progress] interrupted (SIGINT)\n");
+                fflush(progress_fp);
+            }
+            return -EINTR;
+        }
         struct hft_log_info li;
         int rc = hft_log_get_info(fd, &li);
 
@@ -456,9 +471,17 @@ static void hft_log_dump_entries(FILE *fp, const struct hft_log_entry *e, uint32
 // 7 - WMT
 ///////////////////////////////////////////////////////////////////////
 int main(){
+    // Install Ctrl+C handler so we can flush/close logs cleanly.
+    struct sigaction sa;
+    memset(&sa, 0, sizeof(sa));
+    sa.sa_handler = on_sigint;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0;
+    (void)sigaction(SIGINT, &sa, NULL);
+
     FILE *progress_fp = fopen("hft_progress.txt", "w");
     if (!progress_fp) {
-        fprintf(stderr, "WARNING: could not open hft_progress.log for writing: %s\n", strerror(errno));
+        fprintf(stderr, "WARNING: could not open hft_progress.txt for writing: %s\n", strerror(errno));
     }
     // Change if data dir changes
     const char *data_dir = "../data";
@@ -500,8 +523,13 @@ int main(){
     struct hft_log_info final_li;
     rc = hft_log_wait_trade_done(progress_fp, hft_sim_fd, 600000, 2, &final_li);
     if (rc) {
-        fprintf(stderr, "ERROR: timed out / failed waiting for trade_done: %d\n", rc);
+        if (rc == -EINTR) {
+            fprintf(stderr, "Interrupted (Ctrl+C). Exiting cleanly.\n");
+        } else {
+            fprintf(stderr, "ERROR: timed out / failed waiting for trade_done: %d\n", rc);
+        }
         close_all_csvs(&csv);
+        if (progress_fp) fclose(progress_fp);
         return 1;
     }
 
