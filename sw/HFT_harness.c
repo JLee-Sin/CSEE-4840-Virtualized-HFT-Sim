@@ -515,6 +515,12 @@ int main(){
         return 1;
     }
 
+    // Check state before start dispatching
+    struct hft_disp_status st;
+    hft_disp_get_status(hft_sim_fd, &st);
+    fprintf(stderr, "Before DISPATCH: state=%u ready=0x%02x empty=0x%02x full=0x%02x\n",
+            st.state, st.ready_mask, st.empty_mask, st.full_mask);
+
     // Transition Order Dispatcher to DISPATCH
     hft_transition_to_dispatch(hft_sim_fd, 1000);
     printf("Virtualized HFT Simulator has started.\n");
