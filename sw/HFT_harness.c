@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <errno.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -345,19 +346,38 @@ int hft_log_read_all(int fd, struct hft_log_entry *entries,
 // Checks that HFT_SIM is done trading by
 // - Checking Order Dispatcher is the DONE state
 // - All Heap Engines are in the IDLE state
-int hft_wait_trades_finished(int fd, int timeout_ms, int poll_ms) {
+static int hft_log_wait_trade_done(int fd, int timeout_ms, int poll_ms,
+                                   struct hft_log_info *out_final){
     if (poll_ms <= 0) poll_ms = 1;
+
     uint64_t deadline = (timeout_ms < 0) ? 0 : (now_ms() + (uint64_t)timeout_ms);
+
     for (;;) {
         struct hft_log_info li;
         int rc = hft_log_get_info(fd, &li);
-        if (rc) return rc;
-        // trade_done = (Dispatcher State == DONE) AND (All Engines Idling)as
-        if (li.trade_done)
-            return 0;
+
+        if (rc == 0) {
+            if (li.trade_done) {
+                if (out_final) *out_final = li;
+                return 0;
+            }
+        } else if (rc != -EAGAIN) {
+            // Real error
+            return rc;
+        }
+
         if (timeout_ms >= 0 && now_ms() >= deadline)
             return -ETIMEDOUT;
+
         (void)sleep_ms((unsigned)poll_ms);
+    }
+}
+
+// Prints each trade log
+static void hft_log_dump_entries(FILE *fp, const struct hft_log_entry *e, uint32_t n){
+    for (uint32_t i = 0; i < n; i++) {
+        fprintf(fp, "%u,0x%08x,0x%08x,0x%06x\n",
+                i, e[i].word0, e[i].word1, (e[i].word2 & 0x003FFFFF));
     }
 }
 
@@ -410,16 +430,50 @@ int main(){
     hft_transition_to_dispatch(hft_sim_fd, 1000);
     printf("Virtualized HFT Simulator has started.\n");
 
-    // Wait for trades to finish
-    //hft_wait_trades_finished(hft_sim_fd, 60000, 1, 20);
+    // Wait until trading is completely finished 
+    struct hft_log_info final_li;
+    rc = hft_log_wait_trade_done(hft_sim_fd, 60000, 2, &final_li);
+    if (rc) {
+        fprintf(stderr, "ERROR: timed out / failed waiting for trade_done: %d\n", rc);
+        close_all_csvs(&csv);
+        return 1;
+    }
 
-    // Read log
-    //struct hft_log_entry logbuf[4096];
-    //uint32_t got = 0, overflow = 0;
-    //hft_log_read_all(hft_sim_fd, logbuf, 4096, &got, &overflow);
+    printf("Trading done.\n");
+    printf("Trade log count (trades recorded): %u\n", final_li.count);
+    printf("Trade log overflow: %u\n", final_li.overflow);
 
-    // Tell dispatcher to go back to IDLE
-    //hft_transition_done_to_idle(hft_sim_fd, 1000);
+    // Read all trade log entries 
+    uint32_t n = final_li.count;
+    if (n > 1024) n = 1024; // safety (matches RTL depth)
+    if (n == 0) {
+        printf("No trades recorded.\n");
+        close_all_csvs(&csv);
+        return 0;
+    }
+
+    struct hft_log_entry *logbuf = calloc(n, sizeof(*logbuf));
+    if (!logbuf) {
+        fprintf(stderr, "ERROR: calloc failed\n");
+        close_all_csvs(&csv);
+        return 1;
+    }
+
+    uint32_t got = 0, overflow = 0;
+    rc = hft_log_read_all(hft_sim_fd, logbuf, n, &got, &overflow);
+    if (rc) {
+        fprintf(stderr, "ERROR: hft_log_read_all failed: %d\n", rc);
+        free(logbuf);
+        close_all_csvs(&csv);
+        return 1;
+    }
+
+    // Dump to stdout
+    printf("Read back %u trade log entries (overflow=%u)\n", got, overflow);
+    printf("index,word0,word1,word2_low22\n");
+    hft_log_dump_entries(stdout, logbuf, got);
+
+    free(logbuf);
 
     // Close CSV
     close_all_csvs(&csv);
