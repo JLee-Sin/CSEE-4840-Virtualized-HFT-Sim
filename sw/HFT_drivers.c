@@ -206,6 +206,7 @@ static long hft_ioctl(struct file *f, unsigned int cmd, unsigned long arg){
         case HFT_IOC_DISP_GET_STATUS: {
             // Read dispatcher status
             disp_status_raw = ioread32(REG_ADDR(REG_STATUS));
+            pr_info("HFT REG_STATUS raw=0x%08x\n", disp_status_raw);
         
             // Unpack signals
             st.state      = disp_status_raw & STATUS_STATE_MASK;
