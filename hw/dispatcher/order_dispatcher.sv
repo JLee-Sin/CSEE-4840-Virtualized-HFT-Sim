@@ -40,6 +40,15 @@ module order_dispatcher(
     // States
     DISPATCH_STATE state, next_state;
 
+    // FIFO wires declared up here so strict-SV simulators (Questa, VCS)
+    // accept the references in the next_state logic and output assigns
+    // below. The genvar block further down also drives them.
+    localparam int DISP_W = $bits(DISPATCH_ORDER);
+    logic [`N-1:0]     fifo_empty_i;
+    logic [`N-1:0]     fifo_full_i;
+    logic [`N-1:0]     fifo_out_valid_i;
+    logic [DISP_W-1:0] fifo_out_bits [`N-1:0];
+
     // Next State Logic
     always_comb begin
         // Defaults
@@ -76,14 +85,6 @@ module order_dispatcher(
     //  - No to store the timestamp since the FIFO
     // Note that FIFOs are in BRAM now, so there is a 1 cycle read delay.
     //////////////////////////////////////////////////////////////////////////////////
-    localparam int DISP_W = $bits(DISPATCH_ORDER);
-
-    // Connection wires to FIFOs
-    logic [`N-1:0] fifo_empty_i;
-    logic [`N-1:0] fifo_full_i;
-    logic [`N-1:0] fifo_out_valid_i;
-    logic [DISP_W-1:0] fifo_out_bits [`N-1:0];
-    
     genvar s;
     generate
         for (s = 0; s < `N; s++) begin : g_dispatch_fifo
