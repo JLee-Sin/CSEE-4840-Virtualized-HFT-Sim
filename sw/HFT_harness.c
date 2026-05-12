@@ -344,12 +344,12 @@ int hft_log_read_all(int fd, struct hft_log_entry *entries,
 }
 
 // Prints specified mask for all lanes: fifo full, fifo empty, or engine idle
-static void print_lane_mask(const char *label, uint32_t mask) {
-    printf("%s:", label);
+static void print_lane_mask(FILE *fp, const char *label, uint32_t mask) {
+    fprintf(fp, "%s:", label);
     for (int lane = 0; lane < HFT_NUM_LANES; lane++) {
-        printf(" %d=%c", lane, (mask & (1u << lane)) ? '1' : '0');
+        fprintf(fp, " %d=%c", lane, (mask & (1u << lane)) ? '1' : '0');
     }
-    printf("\n");
+    fprintf(fp, "\n");
 }
 
 // Prints the state of the Dispatcher
@@ -364,7 +364,7 @@ static const char *disp_state_str(uint32_t state) {
 }
 
 // 
-static void hft_print_progress_snapshot(int fd) {
+static void hft_print_progress_snapshot(FILE *fp, int fd) {
     struct hft_disp_status st;
     int rc_st = hft_disp_get_status(fd, &st);
 
@@ -372,30 +372,30 @@ static void hft_print_progress_snapshot(int fd) {
     int rc_li = hft_log_get_info(fd, &li);
 
     if (rc_st == 0) {
-        printf("[progress] Dispatcher state=%s (%u)\n", disp_state_str(st.state), st.state);
-        print_lane_mask("[progress] FIFO empty_mask", st.empty_mask);
-        print_lane_mask("[progress] FIFO full_mask ", st.full_mask);
-        print_lane_mask("[progress] FIFO ready_mask", st.ready_mask);
+        fprintf(fp, "[progress] Dispatcher state=%s (%u)\n", disp_state_str(st.state), st.state);
+        print_lane_mask(fp, "[progress] FIFO empty_mask", st.empty_mask);
+        print_lane_mask(fp, "[progress] FIFO full_mask ", st.full_mask);
+        print_lane_mask(fp, "[progress] FIFO ready_mask", st.ready_mask);
     } else {
-        printf("[progress] Dispatcher status unavailable (rc=%d)\n", rc_st);
+        fprintf(fp, "[progress] Dispatcher status unavailable (rc=%d)\n", rc_st);
     }
 
     if (rc_li == 0) {
-        printf("[progress] Trade log count=%u overflow=%u trade_done=%u\n",
+        fprintf(fp, "[progress] Trade log count=%u overflow=%u trade_done=%u\n",
                li.count, li.overflow, li.trade_done);
-        printf("[progress] Engines: all_idle=%u idle_mask=0x%08x\n",
+        fprintf(fp, "[progress] Engines: all_idle=%u idle_mask=0x%08x\n",
                li.all_engines_idle, li.engine_idle_mask);
     } else if (rc_li == -EAGAIN) {
-        printf("[progress] Trade logger info not ready yet (rc=%d)\n", rc_li);
+        fprintf(fp, "[progress] Trade logger info not ready yet (rc=%d)\n", rc_li);
     } else {
-        printf("[progress] Trade logger info unavailable (rc=%d)\n", rc_li);
+        fprintf(fp, "[progress] Trade logger info unavailable (rc=%d)\n", rc_li);
     }
 }
 
 // Checks that HFT_SIM is done trading by
 // - Checking Order Dispatcher is the DONE state
 // - All Heap Engines are in the IDLE state
-static int hft_log_wait_trade_done(int fd, int timeout_ms, int poll_ms,
+static int hft_log_wait_trade_done(FILE *progress_fp, int fd, int timeout_ms, int poll_ms,
                                    struct hft_log_info *out_final){
     if (poll_ms <= 0) poll_ms = 1;
 
@@ -411,7 +411,10 @@ static int hft_log_wait_trade_done(int fd, int timeout_ms, int poll_ms,
 
         uint64_t t = now_ms();
         if (t >= next_print_ms) {
-            hft_print_progress_snapshot(fd);
+            if (progress_fp) {
+                hft_print_progress_snapshot(progress_fp, fd);
+                fflush(progress_fp);
+            }
             next_print_ms = t + print_period_ms;
         }
 
@@ -453,6 +456,10 @@ static void hft_log_dump_entries(FILE *fp, const struct hft_log_entry *e, uint32
 // 7 - WMT
 ///////////////////////////////////////////////////////////////////////
 int main(){
+    FILE *progress_fp = fopen("hft_progress.txt", "w");
+    if (!progress_fp) {
+        fprintf(stderr, "WARNING: could not open hft_progress.log for writing: %s\n", strerror(errno));
+    }
     // Change if data dir changes
     const char *data_dir = "../data";
 
@@ -491,7 +498,7 @@ int main(){
 
     // Wait until trading is completely finished 
     struct hft_log_info final_li;
-    rc = hft_log_wait_trade_done(hft_sim_fd, 600000, 2, &final_li);
+    rc = hft_log_wait_trade_done(progress_fp, hft_sim_fd, 600000, 2, &final_li);
     if (rc) {
         fprintf(stderr, "ERROR: timed out / failed waiting for trade_done: %d\n", rc);
         close_all_csvs(&csv);
@@ -536,6 +543,8 @@ int main(){
 
     // Close CSV
     close_all_csvs(&csv);
+
+    if (progress_fp) fclose(progress_fp);
 
     return 0;
 }
