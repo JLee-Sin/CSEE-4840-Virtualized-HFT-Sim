@@ -1,0 +1,796 @@
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] Dispatcher state=DISPATCH (2)
+[progress] FIFO empty_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO full_mask : 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] FIFO ready_mask: 0=0 1=0 2=0 3=0 4=0 5=0 6=0 7=0
+[progress] Trade logger info not ready yet (rc=-11)
+[progress] interrupted (SIGINT)
