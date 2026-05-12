@@ -282,24 +282,41 @@ static struct miscdevice hft_misc_device = {
 // Initialization code: get resources (registers) and display a welcome message
 static int __init hft_probe(struct platform_device *pdev){
     int ret;
+
+    pr_info(DRIVER_NAME ": probe called for %s\n", dev_name(&pdev->dev));
+
     mutex_init(&dev.lock);
+
     ret = misc_register(&hft_misc_device);
-    if (ret)
+    if (ret) {
+        pr_err(DRIVER_NAME ": misc_register failed: %d\n", ret);
         return ret;
+    }
+
     ret = of_address_to_resource(pdev->dev.of_node, 0, &dev.res);
     if (ret) {
+        pr_err(DRIVER_NAME ": of_address_to_resource failed: %d\n", ret);
         ret = -ENOENT;
         goto out_deregister;
     }
+
+    pr_info(DRIVER_NAME ": resource start=%pa size=%pa\n",
+        &dev.res.start, &(resource_size(&dev.res)));
+
     if (!request_mem_region(dev.res.start, resource_size(&dev.res), DRIVER_NAME)) {
+        pr_err(DRIVER_NAME ": request_mem_region failed\n");
         ret = -EBUSY;
         goto out_deregister;
     }
+
     dev.virtbase = of_iomap(pdev->dev.of_node, 0);
     if (!dev.virtbase) {
+        pr_err(DRIVER_NAME ": of_iomap failed\n");
         ret = -ENOMEM;
         goto out_release_mem;
     }
+
+    pr_info(DRIVER_NAME ": probe successful\n");
     return 0;
 out_release_mem:
     release_mem_region(dev.res.start, resource_size(&dev.res));
