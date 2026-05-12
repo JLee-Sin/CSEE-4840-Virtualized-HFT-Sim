@@ -30,36 +30,40 @@
 #define DRIVER_NAME "HFT_SIM"
 
 // Device registers 
-#define REG_CONTROL      0x00
-#define REG_STATUS       0x04
-#define REG_PUSH_BASE    0x08
-#define REG_PUSH(n)      (REG_PUSH_BASE + 4 * (n)) // We are using 32-bit words
-#define REG_LOG_COUNT   0x28
-#define REG_LOG_FLAGS   0x2C
-#define REG_LOG_INDEX   0x30
-#define REG_LOG_DATA0   0x34
-#define REG_LOG_DATA1   0x38
-#define REG_LOG_DATA2   0x3C
-#define REG_LOG_CLEAR   0x40
-#define REG_ADDR(x)      (dev.virtbase + (x))
+#define REG_CONTROL     0x00
+#define REG_STATUS      0x04
+#define REG_PUSH_BASE   0x08
+#define REG_PUSH(n)     (REG_PUSH_BASE + 4 * (n)) // We are using 32-bit words
+#define REG_LOG_INFO    0x28
+#define REG_LOG_CMD     0x2C
+#define REG_LOG_DATA0   0x30
+#define REG_LOG_DATA1   0x34
+#define REG_LOG_DATA2   0x38
+#define REG_ADDR(x)     (dev.virtbase + (x))
 
 // Control and status bit defs
-#define CTRL_BEGIN_WRITE     BIT(0)
-#define CTRL_BEGIN_DISPATCH  BIT(1)
-#define CTRL_CLEAR_DONE      BIT(2)
-#define STATUS_STATE_MASK   0x00000003
-#define STATUS_READY_MASK   0x000003FC
-#define STATUS_EMPTY_MASK   0x0003FC00
-#define STATUS_FULL_MASK    0x03FC0000
-#define STATUS_READY_SHIFT  2
-#define STATUS_EMPTY_SHIFT  10
-#define STATUS_FULL_SHIFT   18
-#define HFT_STATE_IDLE       0
-#define HFT_STATE_WRITE      1
-#define HFT_STATE_DISPATCH   2
-#define HFT_STATE_DONE       3
-#define LOG_FLAG_OVERFLOW   BIT(0)
-#define LOG_FLAG_DATA_VALID BIT(1)
+#define CTRL_BEGIN_WRITE                BIT(0)
+#define CTRL_BEGIN_DISPATCH             BIT(1)
+#define CTRL_CLEAR_DONE                 BIT(2)
+#define STATUS_STATE_MASK               0x00000003
+#define STATUS_READY_MASK               0x000003FC
+#define STATUS_EMPTY_MASK               0x0003FC00
+#define STATUS_FULL_MASK                0x03FC0000
+#define STATUS_READY_SHIFT              2
+#define STATUS_EMPTY_SHIFT              10
+#define STATUS_FULL_SHIFT               18
+#define HFT_STATE_IDLE                  0
+#define HFT_STATE_WRITE                 1
+#define HFT_STATE_DISPATCH              2
+#define HFT_STATE_DONE                  3
+#define LOG_INFO_OVERFLOW_BIT           0
+#define LOG_INFO_DATA_VALID_BIT         1
+#define LOG_INFO_COUNT_SHIFT            2
+#define LOG_INFO_COUNT_MASK             (0x7FFu << LOG_INFO_COUNT_SHIFT) /* for depth 1024 */
+#define LOG_INFO_ENGINE_IDLE_SHIFT      16
+#define LOG_INFO_ENGINE_IDLE_MASK       (0xFFu << LOG_INFO_ENGINE_IDLE_SHIFT)
+#define LOG_INFO_ALL_ENGINES_IDLE_BIT   24
+#define LOG_INFO_TRADE_DONE_BIT         25
 
 // Information about HFT_SIM device
 struct hft_dev {
@@ -74,24 +78,14 @@ struct hft_dev {
 
 // Constructs Orders to match what Order Dispatcher expects:
 // [type [31]| price [30:15] | quantity [14:0]]
-static inline __u32 pack_dispatch_order(const struct hft_order *o){
+static inline __u32 hft_disp_pack_order_word(const struct hft_disp_order *o){
     return (((__u32)(o->type & 0x1)) << 31) |
            (((__u32)(o->price & 0xFFFF)) << 15) |
            ((__u32)(o->quantity & 0x7FFF));
 }
 
-// Write control signal for Order Dispatcher
-static inline void hft_write_control(__u32 bits){
-    iowrite32(bits, REG_ADDR(REG_CONTROL));
-}
-
-// Reads status signal from Order Dispatcher
-static inline __u32 hft_read_status_raw(void){
-    return ioread32(REG_ADDR(REG_STATUS));
-}
-
 // Write Order to specific buffer in hardware 
-static int hft_push_order_hw(__u32 lane, const struct hft_order *o){
+static int hft_disp_push_order_hw(__u32 lane, const struct hft_disp_order *o){
     __u32 raw, ready_mask;
 
     // Check lane of buffer we are writing to
@@ -102,67 +96,55 @@ static int hft_push_order_hw(__u32 lane, const struct hft_order *o){
     if (o->type > 1 || o->quantity > 0x7FFF)
         return -EINVAL;
 
-    // Check that dipatcher and lanse is ready to write
-    raw = hft_read_status_raw();
+    // Check dipatcher status and lanes are ready to write
+    raw = ioread32(REG_ADDR(REG_STATUS));
     if ((raw & STATUS_STATE_MASK) != HFT_STATE_WRITE)
         return -EAGAIN;
     ready_mask = (raw & STATUS_READY_MASK) >> STATUS_READY_SHIFT;
     if (!(ready_mask & BIT(lane)))
         return -EBUSY;
 
-    // Write to buffer
-    iowrite32(pack_dispatch_order(o), REG_ADDR(REG_PUSH(lane)));
+    // Write order word into PUSH lane register
+    iowrite32(hft_disp_pack_order_word(o), REG_ADDR(REG_PUSH(lane)));
     return 0;
 }
 
-// Read trade log count
-static inline __u32 hft_read_log_count(void){
-    return ioread32(REG_ADDR(REG_LOG_COUNT));
-}
-
-// Read trade flags logs
-static inline __u32 hft_read_log_flags(void){
-    return ioread32(REG_ADDR(REG_LOG_FLAGS));
-}
-
-// Write index of log requested
-static inline void hft_request_log_entry(__u32 index){
-    iowrite32(index, REG_ADDR(REG_LOG_INDEX));
-}
-
-// Write log clear signal
-static inline void hft_clear_log_hw(void){
-    iowrite32(1, REG_ADDR(REG_LOG_CLEAR));
-}
-
 // Read trade log
-static int hft_read_log_entry_hw(struct hft_log_entry *entry){
-    __u32 raw, count, flags;
+static int hft_log_read_entry_hw(struct hft_log_entry *entry){
+    __u32 status, state;
+    __u32 info, count;
     int timeout_us = 1000;
 
-    raw = hft_read_status_raw();
-    if ((raw & STATUS_STATE_MASK) != HFT_STATE_DONE)
+    // Check dispatcher STATUS for DONE state
+    status = ioread32(REG_ADDR(REG_STATUS));
+    state  = status & STATUS_STATE_MASK;
+    if (state != HFT_STATE_DONE)
         return -EAGAIN;
 
-    count = hft_read_log_count();
+    // Read LOG_INFO for: count, overflow, data_valid, and engine idle bits
+    info  = ioread32(REG_ADDR(REG_LOG_INFO));
+    count = (info & LOG_INFO_COUNT_MASK) >> LOG_INFO_COUNT_SHIFT;
     if (entry->index >= count)
         return -EINVAL;
 
-    hft_request_log_entry(entry->index);
+    // Issue trade log read request: bit1=read_req, bits[...]=index<<2
+    iowrite32(BIT(1) | (entry->index << 2), REG_ADDR(REG_LOG_CMD));
 
+    // Wait for valid data:
+    // LOG_INFO[1] = data_valid
     do {
-        flags = hft_read_log_flags();
-        if (flags & LOG_FLAG_DATA_VALID)
+        info = ioread32(REG_ADDR(REG_LOG_INFO));
+        if (info & BIT(LOG_INFO_DATA_VALID_BIT))
             break;
         udelay(1);
     } while (--timeout_us);
-
-    if (!(flags & LOG_FLAG_DATA_VALID))
+    if (!(info & BIT(LOG_INFO_DATA_VALID_BIT)))
         return -ETIMEDOUT;
 
+    // Read trade logs payload words
     entry->word0 = ioread32(REG_ADDR(REG_LOG_DATA0));
     entry->word1 = ioread32(REG_ADDR(REG_LOG_DATA1));
-    entry->word2 = ioread32(REG_ADDR(REG_LOG_DATA2)) & 0x003FFFFF;
+    entry->word2 = ioread32(REG_ADDR(REG_LOG_DATA2)) & 0x003FFFFF; // Ignore top 10 bits. 
 
     return 0;
 }
@@ -174,86 +156,107 @@ static int hft_read_log_entry_hw(struct hft_log_entry *entry){
 // Handle ioctl() calls from user
 static long hft_ioctl(struct file *f, unsigned int cmd, unsigned long arg){
     void __user *user_arg = (void __user *)arg;
-    struct hft_push_req req;
-    struct hft_status st;
+    struct hft_disp_push_req req;
+    struct hft_disp_status st;
     struct hft_log_info li;
     struct hft_log_entry le;
-    __u32 raw;
     long ret = 0;
 
     mutex_lock(&dev.lock);
 
     // Determine what operation to perform 
     switch (cmd) {
-        case HFT_IOC_BEGIN_WRITE:
-            hft_write_control(CTRL_BEGIN_WRITE);
+        case HFT_IOC_DISP_BEGIN_WRITE:{
+            // Write dispatcher CONTROL: begin_write pulse
+            iowrite32(CTRL_BEGIN_WRITE, REG_ADDR(REG_CONTROL));
             break;
-    
-        case HFT_IOC_BEGIN_DISPATCH:
-            hft_write_control(CTRL_BEGIN_DISPATCH);
+        }
+            
+        case HFT_IOC_DISP_BEGIN_DISPATCH:{
+            // Write dispatcher CONTROL: begin_dispatch pulse
+            iowrite32(CTRL_BEGIN_DISPATCH, REG_ADDR(REG_CONTROL));
             break;
-    
-        case HFT_IOC_CLEAR_DONE:
-            hft_write_control(CTRL_CLEAR_DONE);
+        }
+            
+        case HFT_IOC_DISP_CLEAR_DONE:{
+            // Write dispatcher CONTROL: clear_done pulse
+            iowrite32(CTRL_CLEAR_DONE, REG_ADDR(REG_CONTROL));
             break;
+        }
+            
+        case HFT_IOC_LOG_CLEAR:{
+            // Write LOG_CMD: clear pulse (bit0)
+            iowrite32(BIT(0), REG_ADDR(REG_LOG_CMD));
+            break;
+        }
     
-        case HFT_IOC_PUSH_ORDER:
+        case HFT_IOC_DISP_PUSH_ORDER:{
             if (copy_from_user(&req, user_arg, sizeof(req))) {
                 ret = -EFAULT;
                 break;
             }
     
-            ret = hft_push_order_hw(req.lane, &req.order);
+            ret = hft_disp_push_order_hw(req.lane, &req.order);
             break;
+        }
     
-        case HFT_IOC_GET_STATUS:
-            raw = hft_read_status_raw();
+        case HFT_IOC_DISP_GET_STATUS: {
+            // Read dispatcher status
+            __u32 disp_status_raw = ioread32(REG_ADDR(REG_STATUS));
         
-            st.state      = raw & STATUS_STATE_MASK;
-            st.ready_mask = (raw & STATUS_READY_MASK) >> STATUS_READY_SHIFT;
-            st.empty_mask = (raw & STATUS_EMPTY_MASK) >> STATUS_EMPTY_SHIFT;
-            st.full_mask  = (raw & STATUS_FULL_MASK)  >> STATUS_FULL_SHIFT;
+            // Unpack signals
+            st.state      = disp_status_raw & STATUS_STATE_MASK;
+            st.ready_mask = (disp_status_raw & STATUS_READY_MASK) >> STATUS_READY_SHIFT;
+            st.empty_mask = (disp_status_raw & STATUS_EMPTY_MASK) >> STATUS_EMPTY_SHIFT;
+            st.full_mask  = (disp_status_raw & STATUS_FULL_MASK)  >> STATUS_FULL_SHIFT;
         
             if (copy_to_user(user_arg, &st, sizeof(st)))
                 ret = -EFAULT;
             break;
-    
-        case HFT_IOC_GET_LOG_INFO:
-            raw = hft_read_status_raw();
-            if ((raw & STATUS_STATE_MASK) != HFT_STATE_DONE) {
+        }
+        
+        case HFT_IOC_LOG_GET_INFO: {
+            // Check dispatcher STATUS for DONE state
+            __u32 disp_status_raw = ioread32(REG_ADDR(REG_STATUS));
+            __u32 disp_state = disp_status_raw & STATUS_STATE_MASK;
+            if (disp_state != HFT_STATE_DONE) {
                 ret = -EAGAIN;
                 break;
             }
-    
-            li.count    = hft_read_log_count();
-            li.overflow = !!(hft_read_log_flags() & LOG_FLAG_OVERFLOW);
-    
+        
+            // Read and unpack trade log status
+            __u32 log_info_raw = ioread32(REG_ADDR(REG_LOG_INFO));
+            li.overflow         = !!(log_info_raw & BIT(LOG_INFO_OVERFLOW_BIT));
+            li.count            = (log_info_raw & LOG_INFO_COUNT_MASK) >> LOG_INFO_COUNT_SHIFT;
+            li.engine_idle_mask = (log_info_raw & LOG_INFO_ENGINE_IDLE_MASK) >> LOG_INFO_ENGINE_IDLE_SHIFT;
+            li.all_engines_idle = !!(log_info_raw & BIT(LOG_INFO_ALL_ENGINES_IDLE_BIT));
+            li.trade_done       = !!(log_info_raw & BIT(LOG_INFO_TRADE_DONE_BIT));
+        
             if (copy_to_user(user_arg, &li, sizeof(li)))
                 ret = -EFAULT;
             break;
+        }
     
-        case HFT_IOC_READ_LOG_ENTRY:
+        case HFT_IOC_LOG_READ_ENTRY:{
             if (copy_from_user(&le, user_arg, sizeof(le))) {
                 ret = -EFAULT;
                 break;
             }
     
-            ret = hft_read_log_entry_hw(&le);
+            ret = hft_log_read_entry_hw(&le);
             if (ret)
                 break;
     
             if (copy_to_user(user_arg, &le, sizeof(le)))
                 ret = -EFAULT;
             break;
-    
-        case HFT_IOC_CLEAR_LOG:
-            hft_clear_log_hw();
-            break;
+        }
         
-        default:
+        default:{
             ret = -EINVAL;
             break;
         }
+    }
 
     mutex_unlock(&dev.lock);
     return ret;

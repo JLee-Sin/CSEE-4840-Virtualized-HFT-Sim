@@ -12,16 +12,13 @@
 
 #include "HFT_drivers.h"
 
-#define HFT_NUM_LANES 8
-
 #define HFT_ALL_LANES_MASK ((1u << HFT_NUM_LANES) - 1u)
-
 #define HFT_STATE_IDLE     0
 #define HFT_STATE_WRITE    1
 #define HFT_STATE_DISPATCH 2
 #define HFT_STATE_DONE     3
 
-// Driver 
+// Driver
 int hft_sim_fd;
 
 // Internal Structs
@@ -30,8 +27,8 @@ typedef struct {
     bool  lane_eof[HFT_NUM_LANES];   // True if EOF reached on that lane
 } LaneCSVReader;
 
-/////////////////////////////////////////////////////////////////////// 
-// Helper Functions 
+///////////////////////////////////////////////////////////////////////
+// Helper Functions
 ///////////////////////////////////////////////////////////////////////
 
 ///////// Time/Sleep /////////
@@ -101,7 +98,7 @@ static int open_all_csvs(LaneCSVReader *r, const char *data_dir) {
             close_all_csvs(r);
             return -ENOENT;
         }
-        
+
         r->lane_eof[lane] = false;
     }
     return 0;
@@ -109,21 +106,21 @@ static int open_all_csvs(LaneCSVReader *r, const char *data_dir) {
 
 ///////// Order Dispatcher States /////////
 // Get Status of Order Dispatcher
-int hft_get_status(int fd, struct hft_status *st) {
+int hft_disp_get_status(int fd, struct hft_disp_status *st) {
     if (!st) return -EINVAL;
-    if (ioctl(fd, HFT_IOC_GET_STATUS, st) < 0) return -errno;
+    if (ioctl(fd, HFT_IOC_DISP_GET_STATUS, st) < 0) return -errno;
     return 0;
 }
 
-// Wait for a specific state in the Order Dispatcher 
-int hft_wait_state(int fd, uint32_t want_state, int timeout_ms, int poll_ms) {
+// Wait for a specific state in the Order Dispatcher
+int hft_disp_wait_state(int fd, uint32_t want_state, int timeout_ms, int poll_ms) {
     if (poll_ms <= 0) poll_ms = 1;
     uint64_t deadline = (timeout_ms < 0) ? 0 : (now_ms() + (uint64_t)timeout_ms);
 
     for (;;) {
         // Get state
-        struct hft_status st;
-        int rc = hft_get_status(fd, &st);
+        struct hft_disp_status st;
+        int rc = hft_disp_get_status(fd, &st);
         if (rc) return rc;
 
         // Chheck for desire state
@@ -138,28 +135,28 @@ int hft_wait_state(int fd, uint32_t want_state, int timeout_ms, int poll_ms) {
 // Signals and wait until Order Dispatcher has transitioned to DISPATCHT
 int hft_transition_to_dispatch(int fd, int timeout_ms) {
     // Check that dispatcher is in WRITE (otherwise DISPATCH pulse is ignored).
-    int rc = hft_wait_state(fd, HFT_STATE_WRITE, timeout_ms, 1);
+    int rc = hft_disp_wait_state(fd, HFT_STATE_WRITE, timeout_ms, 1);
     if (rc) return rc;
 
     // Signal transition
-    rc = ioctl(fd, HFT_IOC_BEGIN_DISPATCH);
+    rc = ioctl(fd, HFT_IOC_DISP_BEGIN_DISPATCH);
     if (rc < 0) return -errno;
 
     // Wait until DISPATCH is observed.
-    return hft_wait_state(fd, HFT_STATE_DISPATCH, timeout_ms, /*poll_ms=*/1);
+    return hft_disp_wait_state(fd, HFT_STATE_DISPATCH, timeout_ms, /*poll_ms=*/1);
 }
 
 // Signals and wait until Order Dispatcher has transitioned to IDLE
 // This is once it has transitioned to DONE by itself
 int hft_transition_done_to_idle(int fd, int timeout_ms) {
-    int rc = hft_wait_state(fd, HFT_STATE_DONE, timeout_ms, 1);
+    int rc = hft_disp_wait_state(fd, HFT_STATE_DONE, timeout_ms, 1);
     if (rc) return rc;
 
     // Indicate to Order Dispatcher to transition to IDLE state
-    rc = ioctl(fd, HFT_IOC_CLEAR_DONE);
+    rc = ioctl(fd, HFT_IOC_DISP_CLEAR_DONE);
     if (rc < 0) return -errno;
 
-    return hft_wait_state(fd, HFT_STATE_IDLE, timeout_ms, 1);
+    return hft_disp_wait_state(fd, HFT_STATE_IDLE, timeout_ms, 1);
 }
 
 // Simple herlper fucntion to check if all FIFOs are full
@@ -169,26 +166,26 @@ static bool hft_all_fifos_full_mask(uint32_t full_mask) {
 
 ///////// Pushing Orders into FIFOs /////////
 // Pushes an order into the specified lane (lane = fifo)
-int hft_push_order(int fd, uint32_t lane, const struct hft_order *o) {
+int hft_disp_push_order(int fd, uint32_t lane, const struct hft_disp_order *o) {
     if (!o) return -EINVAL;
 
-    struct hft_push_req req;
+    struct hft_disp_push_req req;
     memset(&req, 0, sizeof(req));
     req.lane  = lane;
     req.order = *o;
 
-    if (ioctl(fd, HFT_IOC_PUSH_ORDER, &req) < 0) return -errno;
+    if (ioctl(fd, HFT_IOC_DISP_PUSH_ORDER, &req) < 0) return -errno;
     return 0;
 }
 
 // Push that waits for lane ready (or until timeout).
-int hft_push_order_blocking(int fd, uint32_t lane, const struct hft_order *o,
+int hft_disp_push_order_blocking(int fd, uint32_t lane, const struct hft_disp_order *o,
                             int timeout_ms, int poll_us) {
     if (poll_us <= 0) poll_us = 200; // 0.2ms default
     uint64_t deadline = (timeout_ms < 0) ? 0 : (now_ms() + (uint64_t)timeout_ms);
 
     for (;;) {
-        int rc = hft_push_order(fd, lane, o);
+        int rc = hft_disp_push_order(fd, lane, o);
         if (rc == 0) return 0;
 
         // Typical transient errors from driver:
@@ -202,7 +199,7 @@ int hft_push_order_blocking(int fd, uint32_t lane, const struct hft_order *o,
 }
 
 // Check if there is new order to push for specified lane
-static int lane_csv_next_order(void *ctx, int lane, struct hft_order *out){
+static int lane_csv_next_order(void *ctx, int lane, struct hft_disp_order *out){
     LaneCSVReader *r = (LaneCSVReader *)ctx;
     // Check lane reader is not empty
     if (!r || !out) return -EINVAL;
@@ -210,12 +207,12 @@ static int lane_csv_next_order(void *ctx, int lane, struct hft_order *out){
     if ((unsigned)lane >= HFT_NUM_LANES) return -EINVAL;
     // Check lane
     if (r->lane_eof[lane]) return 0;
-    
+
     char line[256];
 
     // Loop until there is ususable data in a row
     for (;;) {
-        // Read line in csv 
+        // Read line in csv
         if (!fgets(line, sizeof(line), r->lane_csv[lane])) {
             r->lane_eof[lane] = true;
             return 0; // EOF
@@ -255,7 +252,7 @@ static int lane_csv_next_order(void *ctx, int lane, struct hft_order *out){
 //   1  -> *out filled with next order
 //   0  -> EOF/no-more-orders for that lane
 //  <0  -> error
-typedef int (*hft_next_order_fn)(void *ctx, int lane, struct hft_order *out);
+typedef int (*hft_next_order_fn)(void *ctx, int lane, struct hft_disp_order *out);
 
 // Writes round-robin to fifo0-fifo7 until:
 //   - all FIFOs are full, OR
@@ -274,8 +271,8 @@ int hft_write_orders_round_robin(int fd, hft_next_order_fn next_order, void *ctx
         for (int i = 0; i < HFT_NUM_LANES; i++) all_done &= lane_done[i];
         if (all_done) return 0;
 
-        struct hft_status st;
-        int rc = hft_get_status(fd, &st);
+        struct hft_disp_status st;
+        int rc = hft_disp_get_status(fd, &st);
         if (rc) return rc;
 
         // Stop if all FIFOs full
@@ -289,12 +286,12 @@ int hft_write_orders_round_robin(int fd, hft_next_order_fn next_order, void *ctx
             if (lane_done[lane]) continue;
             if (st.full_mask & (1u << lane)) continue;
 
-            struct hft_order o;
+            struct hft_disp_order o;
             int have = next_order(ctx, lane, &o);
             if (have < 0) return have;
             if (have == 0) { lane_done[lane] = true; continue; }
 
-            rc = hft_push_order_blocking(fd, (uint32_t)lane, &o,
+            rc = hft_disp_push_order_blocking(fd, (uint32_t)lane, &o,
                                          /*timeout_ms=*/2000,
                                          /*poll_us=*/200);
             if (rc) return rc;
@@ -302,7 +299,7 @@ int hft_write_orders_round_robin(int fd, hft_next_order_fn next_order, void *ctx
             if (timeout_ms >= 0 && now_ms() >= deadline) return -ETIMEDOUT;
 
             // Refresh status to avoid pushing into lanes that just filled
-            rc = hft_get_status(fd, &st);
+            rc = hft_disp_get_status(fd, &st);
             if (rc) return rc;
             if (hft_all_fifos_full_mask(st.full_mask)) return 0;
         }
@@ -311,20 +308,20 @@ int hft_write_orders_round_robin(int fd, hft_next_order_fn next_order, void *ctx
 
 ///////// Reading Trade Logs /////////
 // Get Trade log data
-int hft_get_log_info(int fd, struct hft_log_info *li) {
+int hft_log_get_info(int fd, struct hft_log_info *li) {
     if (!li) return -EINVAL;
-    if (ioctl(fd, HFT_IOC_GET_LOG_INFO, li) < 0) return -errno;
+    if (ioctl(fd, HFT_IOC_LOG_GET_INFO, li) < 0) return -errno;
     return 0;
 }
 
 // Reads up to `max_entries` into `entries`.
 // On success, *out_count is filled with the number read.
-int hft_read_trade_log(int fd, struct hft_log_entry *entries,
+int hft_log_read_all(int fd, struct hft_log_entry *entries,
                        uint32_t max_entries, uint32_t *out_count, uint32_t *out_overflow) {
     if (!entries || !out_count) return -EINVAL;
 
     struct hft_log_info li;
-    int rc = hft_get_log_info(fd, &li);
+    int rc = hft_log_get_info(fd, &li);
     if (rc) return rc;
 
     if (out_overflow) *out_overflow = li.overflow;
@@ -337,7 +334,7 @@ int hft_read_trade_log(int fd, struct hft_log_entry *entries,
         memset(&le, 0, sizeof(le));
         le.index = i;
 
-        if (ioctl(fd, HFT_IOC_READ_LOG_ENTRY, &le) < 0) return -errno;
+        if (ioctl(fd, HFT_IOC_LOG_READ_ENTRY, &le) < 0) return -errno;
         entries[i] = le;
     }
 
@@ -345,67 +342,41 @@ int hft_read_trade_log(int fd, struct hft_log_entry *entries,
     return 0;
 }
 
-// Checks that HFT_SIM is done trading by: NEEDS TO BE REWORKED. 
-int hft_wait_trades_finished(int fd, int timeout_ms, int poll_ms, int quiet_ms) {
+// Checks that HFT_SIM is done trading by
+// - Checking Order Dispatcher is the DONE state
+// - All Heap Engines are in the IDLE state
+int hft_wait_trades_finished(int fd, int timeout_ms, int poll_ms) {
     if (poll_ms <= 0) poll_ms = 1;
-    if (quiet_ms <= 0) quiet_ms = 10;
-
     uint64_t deadline = (timeout_ms < 0) ? 0 : (now_ms() + (uint64_t)timeout_ms);
-
-    int rc = hft_wait_state(fd, HFT_STATE_DONE, timeout_ms, 1);
-    if (rc) return rc;
-
-    // "Settling" window: count must be stable for quiet_ms.
-    uint32_t last_count = 0;
-    uint64_t last_change = now_ms();
-
-    // Initialize last_count (GET_LOG_INFO only works in DONE per your driver)
-    struct hft_log_info li;
-    if (ioctl(fd, HFT_IOC_GET_LOG_INFO, &li) < 0) return -errno;
-    last_count  = li.count;
-    last_change = now_ms();
-
     for (;;) {
-        if (ioctl(fd, HFT_IOC_GET_LOG_INFO, &li) < 0) {
-            int e = errno;
-            if (e == EAGAIN) {
-                // Shouldn't happen after DONE, but tolerate.
-                (void)sleep_ms((unsigned)poll_ms);
-                continue;
-            }
-            return -e;
-        }
-
-        if (li.count != last_count) {
-            last_count = li.count;
-            last_change = now_ms();
-        }
-
-        if ((int)(now_ms() - last_change) >= quiet_ms) {
-            return 0; // stable long enough => assume done
-        }
-
-        if (timeout_ms >= 0 && now_ms() >= deadline) return -ETIMEDOUT;
+        struct hft_log_info li;
+        int rc = hft_log_get_info(fd, &li);
+        if (rc) return rc;
+        // trade_done = (Dispatcher State == DONE) AND (All Engines Idling)as
+        if (li.trade_done)
+            return 0;
+        if (timeout_ms >= 0 && now_ms() >= deadline)
+            return -ETIMEDOUT;
         (void)sleep_ms((unsigned)poll_ms);
     }
 }
 
-/////////////////////////////////////////////////////////////////////// 
+///////////////////////////////////////////////////////////////////////
 // Main Function - Actual harness
 // Lanes/FIFO corresponding to each symbol (from symbol_engine.sv):
 // 0 - AAPL (aka APL)
-// 1 - BSX 
+// 1 - BSX
 // 2 - BUS
 // 3 - MMM
 // 4 - MSFT (aka SFT)
 // 5 - SBUX (aks BUX)
-// 6 - TUS 
+// 6 - TUS
 // 7 - WMT
 ///////////////////////////////////////////////////////////////////////
 int main(){
     // Change if data dir changes
-    const char *data_dir = "../data"; 
-    
+    const char *data_dir = "../data";
+
     // Check for device drivers
     static const char filename[] = "/dev/HFT_SIM";
     if ( (hft_sim_fd = open(filename, O_RDWR)) == -1) {
@@ -418,35 +389,35 @@ int main(){
     LaneCSVReader csv = {0};
     int rc = open_all_csvs(&csv, data_dir); // Error messages already handled
     if (rc) return 1;
-    
+
     // Clear counter and overflow of Trade logs
-    if (ioctl(hft_sim_fd, HFT_IOC_CLEAR_LOG) < 0) return -errno;
-    
+    if (ioctl(hft_sim_fd, HFT_IOC_LOG_CLEAR) < 0) return -errno;
+
     // Transition Order Dispatcher to WRITE
-    if (ioctl(hft_sim_fd, HFT_IOC_BEGIN_WRITE) < 0) return -errno;
-    hft_wait_state(hft_sim_fd, HFT_STATE_WRITE, 1000, 1);
+    if (ioctl(hft_sim_fd, HFT_IOC_DISP_BEGIN_WRITE) < 0) return -errno;
+    hft_disp_wait_state(hft_sim_fd, HFT_STATE_WRITE, 1000, 1);
     printf("Writing Data to Order Dispatcher.\n");
-    
+
     // Fill FIFOs round-robin from CSVs
     rc = hft_write_orders_round_robin(hft_sim_fd, lane_csv_next_order, &csv, 30000);
     if (rc) {
         fprintf(stderr, "ERROR: write_orders_round_robin failed: %d\n", rc);
         close_all_csvs(&csv);
         return 1;
-    } 
-    
+    }
+
     // Transition Order Dispatcher to DISPATCH
     hft_transition_to_dispatch(hft_sim_fd, 1000);
     printf("Virtualized HFT Simulator has started.\n");
-    
-    // Wait for trades to finish 
+
+    // Wait for trades to finish
     //hft_wait_trades_finished(hft_sim_fd, 60000, 1, 20);
-    
+
     // Read log
     //struct hft_log_entry logbuf[4096];
     //uint32_t got = 0, overflow = 0;
-    //hft_read_trade_log(hft_sim_fd, logbuf, 4096, &got, &overflow);
-    
+    //hft_log_read_all(hft_sim_fd, logbuf, 4096, &got, &overflow);
+
     // Tell dispatcher to go back to IDLE
     //hft_transition_done_to_idle(hft_sim_fd, 1000);
 

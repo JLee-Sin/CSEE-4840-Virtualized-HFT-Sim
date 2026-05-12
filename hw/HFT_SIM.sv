@@ -51,12 +51,13 @@ module HFT_SIM #(
     localparam int LOG_IDX_W_BUS  = (LOG_IDX_W > 30) ? 30 : LOG_IDX_W; // max index bits in [31:2]
     localparam int LOG_COUNT_W = $clog2(TRADE_LOG_DEPTH + 1);
 
-    logic                      avl_log_read_pulse;
-    logic [LOG_IDX_W-1:0]      avl_log_read_index;
-    logic [`ORDER_WIDTH-1:0]   avl_log_read_data;
-    logic [LOG_COUNT_W-1:0]    avl_log_count;
-    logic                      avl_log_overflow;
-    logic                      avl_log_clear_pulse;
+    logic                       avl_log_read_pulse;
+    logic [LOG_IDX_W-1:0]       avl_log_read_index;
+    logic [`ORDER_WIDTH-1:0]    avl_log_read_data;
+    logic [LOG_COUNT_W-1:0]     avl_log_count;
+    logic                       avl_log_overflow;
+    logic                       avl_log_clear_pulse;
+    logic                       trade_done;
 
     // Shadow register for software-visible log data
     logic [`ORDER_WIDTH-1:0]   avl_log_data_shadow;
@@ -67,7 +68,7 @@ module HFT_SIM #(
     // -> trade_log updates sw_rdata next cycle
     // -> capture sw_rdata the cycle after that
     logic [1:0]                avl_log_read_pipe;
-    
+
     // Dispatcher to engines bus
     logic           [`N-1:0] order_in_valid;
     logic           [`N-1:0] order_in_ready;
@@ -109,12 +110,12 @@ module HFT_SIM #(
     logic                       mem_wdone       [4];
 
     ///////////////////////////////////////////////////////////////////////
-    // Translation Wrapper 
-    // 
-    // This decodes or encodes information so that we can communicate with 
-    // the Linux core over the Avalon bus.  
+    // Translation Wrapper
+    //
+    // This decodes or encodes information so that we can communicate with
+    // the Linux core over the Avalon bus.
     ///////////////////////////////////////////////////////////////////////
-    
+
     // Register Map
     localparam int ADDR_CONTROL   = 5'd0;  // 0x00
     localparam int ADDR_STATUS    = 5'd1;  // 0x04
@@ -131,6 +132,7 @@ module HFT_SIM #(
     localparam int ADDR_LOG_DATA0 = 5'd12; // 0x30
     localparam int ADDR_LOG_DATA1 = 5'd13; // 0x34
     localparam int ADDR_LOG_DATA2 = 5'd14; // 0x38
+
 
     // Decode Avalon writes into dispatcher and trade-log controls
     always_ff @(posedge clk or negedge rst_n) begin
@@ -264,10 +266,17 @@ module HFT_SIM #(
                     // [0] = overflow
                     // [1] = selected log entry valid in DATA0/1/2
                     // [2 +: LOG_COUNT_W] = number of valid entries in trade_log
-                    readdata = {{(32-(LOG_COUNT_W+2)){1'b0}},
-                                avl_log_count,
-                                avl_log_data_valid,
-                                avl_log_overflow};
+                    // [16 +: 'N] = heap engine idle indicator
+                    // [24] = All heap engines are idle signal
+                    // [25] = all trades are done signal
+                    // [31:26] = nothing
+                    readdata = 32'd0;
+                    readdata[0] = avl_log_overflow;
+                    readdata[1] = avl_log_data_valid;
+                    readdata[2 +: LOG_COUNT_W] = avl_log_count;
+                    readdata[16 +: `N] = eng_idle;
+                    readdata[24] = all_engines_idle;
+                    readdata[25] = trade_done;
                 end
                 ADDR_LOG_DATA0: readdata = avl_log_data_shadow[31:0];
                 ADDR_LOG_DATA1: readdata = avl_log_data_shadow[63:32];
@@ -277,10 +286,12 @@ module HFT_SIM #(
         end
     end
 
-    /////////////////////////////////////////////////////////////////////// 
-    // Module Instantiation & Connection 
-    ///////////////////////////////////////////////////////////////////////
+    //  
     
+    ///////////////////////////////////////////////////////////////////////
+    // Module Instantiation & Connection
+    ///////////////////////////////////////////////////////////////////////
+
     // Order Dispatcher
     order_dispatcher u_dispatcher (
         .clk              (clk),
@@ -402,7 +413,7 @@ module HFT_SIM #(
         .mem_busy_2(mem_busy[2]), .mem_busy_3(mem_busy[3]),
 
         .mem_wdone_0(mem_wdone[0]), .mem_wdone_1(mem_wdone[1]),
-        .mem_wdone_2(mem_wdone[2]), .mem_wdone_3(mem_wdone[3]),
+        .mem_wdone_2(mem_wdone[2]), .mem_wdone_3(mem_wdone[3])
     );
 
     // 4 Memory Banks
@@ -418,16 +429,19 @@ module HFT_SIM #(
                 .mem_wdata       (mem_wdata[b]),
                 .mem_rdata       (mem_rdata[b]),
                 .mem_rdata_valid (mem_rdata_valid[b]),
-                .mem_busy        (mem_busy[b])
+                .mem_busy        (mem_busy[b]),
                 .mem_wdone       (mem_wdone[b])
             );
         end
     endgenerate
 
     // Trade Output Aggregator (round-robin between 8 engines) feeds Trade Log
-    logic                  agg_trade_valid;
-    logic [`ORDER_WIDTH-1:0] agg_trade_data;
-    logic                  agg_trade_ready;
+    logic                       agg_trade_valid;
+    logic [`ORDER_WIDTH-1:0]    agg_trade_data;
+    logic                       agg_trade_ready;
+
+    // Denote when trades are sw_clear_done
+    assign trade_done = (avl_disp_state == DONE) && all_engines_idle;
 
     trade_aggregator #(.N(`N), .NODE_WIDTH(`ORDER_WIDTH)) u_trade_agg (
         .clk             (clk),
