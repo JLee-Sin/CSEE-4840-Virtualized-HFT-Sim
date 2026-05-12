@@ -28,7 +28,8 @@ module mmu (
     input  logic [85:0] mem_rdata_0, mem_rdata_1, mem_rdata_2, mem_rdata_3,
     input  logic        mem_rdata_valid_0, mem_rdata_valid_1,
                         mem_rdata_valid_2, mem_rdata_valid_3,
-    input  logic        mem_busy_0, mem_busy_1, mem_busy_2, mem_busy_3
+    input  logic        mem_busy_0, mem_busy_1, mem_busy_2, mem_busy_3,
+    input  logic	mem_wdone_0, mem_wdone_1, mem_wdone_2, mem_wdone_3
 );
 
     logic        req_valid [8];
@@ -246,49 +247,91 @@ module mmu (
         end
     end
 
-    logic [63:0]  page_node_free [240];
-    logic [239:0] page_has_free;
+    // Per-partition write-pointer allocator. 16 partitions, one per
+    // (engine_id[2:0], heap_kind) tuple. Each partition owns 15 contiguous
+    // physical pages x 64 nodes = 960 unique slots. Allocation is purely a
+    // monotonic counter increment within the partition; no shared bitmap,
+    // no priority encoder, no inter-engine contention.
+    logic [3:0] partition_page_off [16];   // 0..14
+    logic [5:0] partition_node_off [16];   // 0..63
+    logic       partition_full     [16];   // 1 once all 960 slots consumed
+
+    // Decode each PTW's target partition from its piped VA (same key the
+    // page_table is indexed on: top engine_id + heap_kind bit).
+    logic [3:0] ptw0_partition, ptw1_partition;
+    assign ptw0_partition = {ptw0_pipe_va[31:29], ptw0_pipe_va[10]};
+    assign ptw1_partition = {ptw1_pipe_va[31:29], ptw1_pipe_va[10]};
+
+    // Absolute visible-page index = partition * 15 + per-partition offset.
+    // Encoded via a precomputed base lookup (cheaper than a runtime *15).
+    logic [7:0] partition_base [16];
+    initial begin
+        for (int p = 0; p < 16; p++) partition_base[p] = 8'(p * 15);
+    end
+
+    logic [7:0] ptw0_alloc_page_avail, ptw1_alloc_page_avail;
+    logic [5:0] ptw0_alloc_node_avail, ptw1_alloc_node_avail;
+    logic       ptw0_alloc_avail,      ptw1_alloc_avail;
+
+    assign ptw0_alloc_page_avail = partition_base[ptw0_partition]
+                                 + {4'd0, partition_page_off[ptw0_partition]};
+    assign ptw0_alloc_node_avail = partition_node_off[ptw0_partition];
+    assign ptw0_alloc_avail      = !partition_full[ptw0_partition];
+
+    assign ptw1_alloc_page_avail = partition_base[ptw1_partition]
+                                 + {4'd0, partition_page_off[ptw1_partition]};
+    assign ptw1_alloc_node_avail = partition_node_off[ptw1_partition];
+    assign ptw1_alloc_avail      = !partition_full[ptw1_partition];
 
     logic       ptw0_alloc, ptw1_alloc;
     logic [7:0] ptw0_alloc_page, ptw1_alloc_page;
     logic [5:0] ptw0_alloc_node, ptw1_alloc_node;
 
-    logic [7:0] ptw0_page_select, ptw1_page_select;
-    logic [63:0] ptw0_node_slice, ptw1_node_slice;
-
-    assign ptw0_node_slice = page_node_free[ptw0_page_select];
-    assign ptw1_node_slice = page_node_free[ptw1_page_select];
-
+    // Same-partition collision: two PTW lanes can't safely share a partition
+    // in one cycle without serializing the write-pointer update. Per the
+    // one-in-flight contract this can't happen (one engine = one outstanding
+    // request), but check anyway and reject ptw1 if it does.
     logic same_alloc_collision;
-    assign same_alloc_collision = ptw0_alloc && ptw1_alloc &&
-                                  (ptw0_alloc_page == ptw1_alloc_page) &&
-                                  (ptw0_alloc_node == ptw1_alloc_node);
+    assign same_alloc_collision = ptw0_alloc && ptw1_alloc
+                               && (ptw0_partition == ptw1_partition);
 
     logic ptw1_alloc_eff;
     assign ptw1_alloc_eff = ptw1_alloc && !same_alloc_collision;
 
+    // Advance the write pointer for each allocating partition.
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            for (int i = 0; i < 240; i++) begin
-                page_node_free[i] <= {64{1'b1}};
+            for (int p = 0; p < 16; p++) begin
+                partition_page_off[p] <= 4'd0;
+                partition_node_off[p] <= 6'd0;
+                partition_full[p]     <= 1'b0;
             end
-            page_has_free <= {240{1'b1}};
         end else begin
             if (ptw0_alloc) begin
-                page_node_free[ptw0_alloc_page][ptw0_alloc_node] <= 1'b0;
+                if (partition_node_off[ptw0_partition] == 6'd63) begin
+                    partition_node_off[ptw0_partition] <= 6'd0;
+                    if (partition_page_off[ptw0_partition] == 4'd14)
+                        partition_full[ptw0_partition] <= 1'b1;
+                    else
+                        partition_page_off[ptw0_partition] <=
+                            partition_page_off[ptw0_partition] + 4'd1;
+                end else begin
+                    partition_node_off[ptw0_partition] <=
+                        partition_node_off[ptw0_partition] + 6'd1;
+                end
             end
             if (ptw1_alloc_eff) begin
-                page_node_free[ptw1_alloc_page][ptw1_alloc_node] <= 1'b0;
-            end
-
-            for (int p = 0; p < 240; p++) begin
-                logic [63:0] post_clear;
-                post_clear = page_node_free[p];
-                if (ptw0_alloc && (ptw0_alloc_page == p[7:0]))
-                    post_clear[ptw0_alloc_node] = 1'b0;
-                if (ptw1_alloc_eff && (ptw1_alloc_page == p[7:0]))
-                    post_clear[ptw1_alloc_node] = 1'b0;
-                page_has_free[p] <= |post_clear;
+                if (partition_node_off[ptw1_partition] == 6'd63) begin
+                    partition_node_off[ptw1_partition] <= 6'd0;
+                    if (partition_page_off[ptw1_partition] == 4'd14)
+                        partition_full[ptw1_partition] <= 1'b1;
+                    else
+                        partition_page_off[ptw1_partition] <=
+                            partition_page_off[ptw1_partition] + 4'd1;
+                end else begin
+                    partition_node_off[ptw1_partition] <=
+                        partition_node_off[ptw1_partition] + 6'd1;
+                end
             end
         end
     end
@@ -302,28 +345,21 @@ module mmu (
     logic ptw1_pt_we_eff;
     assign ptw1_pt_we_eff = ptw1_pt_we && !same_alloc_collision;
 
-    logic [14:0] page_table_copy_a [16384];
-    logic [14:0] page_table_copy_b [16384];
+    (* ramstyle = "M10K, no_rw_check" *)
+    logic [14:0] page_table [0:16383];
 
     always_ff @(posedge clk) begin
-        if (ptw0_pt_we) begin
-            page_table_copy_a[ptw0_pt_waddr] <= ptw0_pt_wdata;
-            page_table_copy_b[ptw0_pt_waddr] <= ptw0_pt_wdata;
-        end
-        if (ptw1_pt_we_eff) begin
-            page_table_copy_a[ptw1_pt_waddr] <= ptw1_pt_wdata;
-            page_table_copy_b[ptw1_pt_waddr] <= ptw1_pt_wdata;
+        if (ptw0_pt_we && (ptw0_pt_raddr == ptw0_pt_waddr)) begin
+            page_table[ptw0_pt_raddr] <= ptw0_pt_wdata;
         end
 
-        ptw0_pt_rdata <= page_table_copy_a[ptw0_pt_raddr];
-        ptw1_pt_rdata <= page_table_copy_b[ptw1_pt_raddr];
-    end
-
-    initial begin
-        for (int i = 0; i < 16384; i++) begin
-            page_table_copy_a[i] = 15'd0;
-            page_table_copy_b[i] = 15'd0;
+        ptw0_pt_rdata <= page_table[ptw0_pt_raddr];
+	
+        if (ptw1_pt_we_eff && (ptw1_pt_raddr == ptw1_pt_waddr)) begin
+            page_table[ptw1_pt_raddr] <= ptw1_pt_wdata;
         end
+       
+        ptw1_pt_rdata <= page_table[ptw1_pt_raddr];
     end
 
     HPTW #(.LOW_FIRST(1'b1)) u_ptw0 (
@@ -341,9 +377,9 @@ module mmu (
         .pt_we              (ptw0_pt_we),
         .pt_waddr           (ptw0_pt_waddr),
         .pt_wdata           (ptw0_pt_wdata),
-        .page_has_free      (page_has_free),
-        .node_free_slice    (ptw0_node_slice),
-        .alloc_page_select  (ptw0_page_select),
+        .alloc_avail        (ptw0_alloc_avail),
+        .alloc_page_in      (ptw0_alloc_page_avail),
+        .alloc_node_in      (ptw0_alloc_node_avail),
         .alloc              (ptw0_alloc),
         .alloc_page_idx     (ptw0_alloc_page),
         .alloc_node_idx     (ptw0_alloc_node)
@@ -364,9 +400,9 @@ module mmu (
         .pt_we              (ptw1_pt_we),
         .pt_waddr           (ptw1_pt_waddr),
         .pt_wdata           (ptw1_pt_wdata),
-        .page_has_free      (page_has_free),
-        .node_free_slice    (ptw1_node_slice),
-        .alloc_page_select  (ptw1_page_select),
+        .alloc_avail        (ptw1_alloc_avail),
+        .alloc_page_in      (ptw1_alloc_page_avail),
+        .alloc_node_in      (ptw1_alloc_node_avail),
         .alloc              (ptw1_alloc),
         .alloc_page_idx     (ptw1_alloc_page),
         .alloc_node_idx     (ptw1_alloc_node)
@@ -468,7 +504,7 @@ module mmu (
         .mem_wdata_2       (mem_wdata_2),
         .mem_rdata_2       (mem_rdata_2),
         .mem_rdata_valid_2 (mem_rdata_valid_2),
-	.mem_wdone_2       (mem_wdone_2),
+	.mem_wdone_2	   (mem_wdone_2),
         .mem_busy_2        (mem_busy_2),
 
         .mem_addr_3        (mem_addr_3),

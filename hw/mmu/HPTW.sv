@@ -20,10 +20,14 @@ module HPTW #(
     output logic [13:0]  pt_waddr,
     output logic [14:0]  pt_wdata,
 
-    input  logic [239:0] page_has_free,
-    input  logic [63:0]  node_free_slice,
+    // Allocator interface. The wrapper (mmu.sv) hands HPTW a pre-selected
+    // (page, node) tuple based on the request's partition. HPTW just
+    // consumes it on ALLOCATE; the priority-encoder logic that used to
+    // live here is gone.
+    input  logic         alloc_avail,
+    input  logic [7:0]   alloc_page_in,
+    input  logic [5:0]   alloc_node_in,
 
-    output logic [7:0]   alloc_page_select,
     output logic         alloc,
     output logic [7:0]   alloc_page_idx,
     output logic [5:0]   alloc_node_idx
@@ -50,57 +54,6 @@ module HPTW #(
     assign lookup_page_idx  = pt_rdata[13:6];
     assign lookup_node_idx  = pt_rdata[5:0];
 
-    logic [7:0] alloc_page;
-    logic       any_page_free;
-
-    always_comb begin
-        alloc_page    = 8'd0;
-        any_page_free = 1'b0;
-        if (LOW_FIRST) begin
-            for (int i = 0; i < 240; i++) begin
-                if (page_has_free[i] && !any_page_free) begin
-                    alloc_page    = i[7:0];
-                    any_page_free = 1'b1;
-                end
-            end
-        end else begin
-            for (int i = 239; i >= 0; i--) begin
-                if (page_has_free[i] && !any_page_free) begin
-                    alloc_page    = i[7:0];
-                    any_page_free = 1'b1;
-                end
-            end
-        end
-    end
-
-    assign alloc_page_select = alloc_page;
-
-    logic [5:0] alloc_node;
-    logic       any_node_free;
-
-    always_comb begin
-        alloc_node    = 6'd0;
-        any_node_free = 1'b0;
-        if (LOW_FIRST) begin
-            for (int j = 0; j < 64; j++) begin
-                if (node_free_slice[j] && !any_node_free) begin
-                    alloc_node    = j[5:0];
-                    any_node_free = 1'b1;
-                end
-            end
-        end else begin
-            for (int j = 63; j >= 0; j--) begin
-                if (node_free_slice[j] && !any_node_free) begin
-                    alloc_node    = j[5:0];
-                    any_node_free = 1'b1;
-                end
-            end
-        end
-    end
-
-    logic any_free_anywhere;
-    assign any_free_anywhere = any_page_free && any_node_free;
-
     logic [7:0] selected_visible_page;
     logic [5:0] selected_node;
     always_comb begin
@@ -108,8 +61,8 @@ module HPTW #(
             selected_visible_page = lookup_page_idx;
             selected_node         = lookup_node_idx;
         end else begin
-            selected_visible_page = alloc_page;
-            selected_node         = alloc_node;
+            selected_visible_page = alloc_page_in;
+            selected_node         = alloc_node_in;
         end
     end
 
@@ -130,11 +83,9 @@ module HPTW #(
     always_comb begin
         n_state = state;
         unique case (state)
-            IDLE:     if (va_valid) begin
-               n_state = LOOKUP;
-	    end
-            LOOKUP:   n_state = lookup_valid_bit ? DONE : ALLOCATE;
-            ALLOCATE: n_state = any_free_anywhere ? DONE : FAULT;
+            IDLE:     if (va_valid) n_state = LOOKUP;
+            LOOKUP:   if (lookup_valid_bit) n_state = DONE; else n_state = ALLOCATE;
+            ALLOCATE: if (alloc_avail) n_state = DONE; else n_state = FAULT;
             DONE:     n_state = IDLE;
             FAULT:    n_state = IDLE;
         endcase
@@ -173,20 +124,17 @@ module HPTW #(
     end
 
     always_comb begin
-        if (state == IDLE && va_valid)begin
-	   pt_raddr = pt_key;
-	end else begin
-           pt_raddr = latched_key;
-	end
+        if (state == IDLE && va_valid) pt_raddr = pt_key;
+        else                           pt_raddr = latched_key;
     end
 
-    assign pt_we    = (state == ALLOCATE) && any_free_anywhere;
+    assign pt_we    = (state == ALLOCATE) && alloc_avail;
     assign pt_waddr = latched_key;
-    assign pt_wdata = {1'b1, alloc_page, alloc_node};
+    assign pt_wdata = {1'b1, alloc_page_in, alloc_node_in};
 
-    assign alloc          = (state == ALLOCATE) && any_free_anywhere;
-    assign alloc_page_idx = alloc_page;
-    assign alloc_node_idx = alloc_node;
+    assign alloc          = (state == ALLOCATE) && alloc_avail;
+    assign alloc_page_idx = alloc_page_in;
+    assign alloc_node_idx = alloc_node_in;
 
     assign pa       = pa_reg;
     assign pa_valid = pa_valid_reg;
@@ -195,4 +143,3 @@ module HPTW #(
     assign busy     = (state != IDLE);
 
 endmodule
-

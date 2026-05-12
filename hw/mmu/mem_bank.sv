@@ -149,7 +149,7 @@ module mem_bank #(
 	    mem_wdone	    <= 1'b0;
             
 	    if (state == DONE_READ && !latched_is_write) begin
-                mem_rdata       <= read_assemble;
+                mem_rdata       <= {active_rdata[21:0], read_assemble[63:0]};
                 mem_rdata_valid <= 1'b1;
             end
 
@@ -188,8 +188,8 @@ module bram_dp_256x32 (
     input  logic [31:0] wdata,
     output logic [31:0] rdata
 );
-
-    logic [31:0] mem [256];
+    (* ramstyle = "no_rw_check, M10K" *)
+    logic [31:0] mem [0:255];
 
     always_ff @(posedge clk) begin
         if (we) mem[waddr] <= wdata;
