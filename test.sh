@@ -13,4 +13,4 @@ make
 insmod HFT_drivers.ko
 lsmod
 ./HFT_harness
-rmmod hft_sim
+rmmod HFT_drivers

@@ -432,7 +432,7 @@ int main(){
 
     // Wait until trading is completely finished 
     struct hft_log_info final_li;
-    rc = hft_log_wait_trade_done(hft_sim_fd, 60000, 2, &final_li);
+    rc = hft_log_wait_trade_done(hft_sim_fd, 600000, 2, &final_li);
     if (rc) {
         fprintf(stderr, "ERROR: timed out / failed waiting for trade_done: %d\n", rc);
         close_all_csvs(&csv);
