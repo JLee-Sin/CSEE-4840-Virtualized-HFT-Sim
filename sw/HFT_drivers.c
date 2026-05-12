@@ -27,7 +27,7 @@
 #include <linux/delay.h>
 #include "HFT_drivers.h"
 
-#define DRIVER_NAME "HFT_SIM"
+#define DRIVER_NAME "hft_sim"
 
 // Device registers 
 #define REG_CONTROL     0x00
@@ -160,6 +160,9 @@ static long hft_ioctl(struct file *f, unsigned int cmd, unsigned long arg){
     struct hft_disp_status st;
     struct hft_log_info li;
     struct hft_log_entry le;
+    __u32 disp_status_raw;
+    __u32 disp_state;
+    __u32 log_info_raw;
     long ret = 0;
 
     mutex_lock(&dev.lock);
@@ -202,7 +205,7 @@ static long hft_ioctl(struct file *f, unsigned int cmd, unsigned long arg){
     
         case HFT_IOC_DISP_GET_STATUS: {
             // Read dispatcher status
-            __u32 disp_status_raw = ioread32(REG_ADDR(REG_STATUS));
+            disp_status_raw = ioread32(REG_ADDR(REG_STATUS));
         
             // Unpack signals
             st.state      = disp_status_raw & STATUS_STATE_MASK;
@@ -217,15 +220,15 @@ static long hft_ioctl(struct file *f, unsigned int cmd, unsigned long arg){
         
         case HFT_IOC_LOG_GET_INFO: {
             // Check dispatcher STATUS for DONE state
-            __u32 disp_status_raw = ioread32(REG_ADDR(REG_STATUS));
-            __u32 disp_state = disp_status_raw & STATUS_STATE_MASK;
+            disp_status_raw = ioread32(REG_ADDR(REG_STATUS));
+            disp_state = disp_status_raw & STATUS_STATE_MASK;
             if (disp_state != HFT_STATE_DONE) {
                 ret = -EAGAIN;
                 break;
             }
         
             // Read and unpack trade log status
-            __u32 log_info_raw = ioread32(REG_ADDR(REG_LOG_INFO));
+            log_info_raw = ioread32(REG_ADDR(REG_LOG_INFO));
             li.overflow         = !!(log_info_raw & BIT(LOG_INFO_OVERFLOW_BIT));
             li.count            = (log_info_raw & LOG_INFO_COUNT_MASK) >> LOG_INFO_COUNT_SHIFT;
             li.engine_idle_mask = (log_info_raw & LOG_INFO_ENGINE_IDLE_MASK) >> LOG_INFO_ENGINE_IDLE_SHIFT;
@@ -300,8 +303,8 @@ static int __init hft_probe(struct platform_device *pdev){
         goto out_deregister;
     }
 
-    pr_info(DRIVER_NAME ": resource start=%pa size=%pa\n",
-        &dev.res.start, &(resource_size(&dev.res)));
+    pr_info(DRIVER_NAME ": resource start=%pa size=%lu\n",
+        &dev.res.start, (unsigned long)resource_size(&dev.res));
 
     if (!request_mem_region(dev.res.start, resource_size(&dev.res), DRIVER_NAME)) {
         pr_err(DRIVER_NAME ": request_mem_region failed\n");
@@ -340,7 +343,7 @@ static int hft_remove(struct platform_device *pdev){
 // Which "compatible" string(s) to search for in the Device Tree 
 #ifdef CONFIG_OF
 static const struct of_device_id hft_of_match[] = {
-    { .compatible = "csee4840,hft-sim-1.0" },
+    { .compatible = "csee4840,hft_sim-1.0" },
     { },
 };
 MODULE_DEVICE_TABLE(of, hft_of_match);

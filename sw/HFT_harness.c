@@ -398,7 +398,7 @@ int main(){
     const char *data_dir = "../data";
 
     // Check for device drivers
-    static const char filename[] = "/dev/HFT_SIM";
+    static const char filename[] = "/dev/hft_sim";
     if ( (hft_sim_fd = open(filename, O_RDWR)) == -1) {
         fprintf(stderr, "Error: could not open %s\n", filename);
         return -1;
