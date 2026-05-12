@@ -10,7 +10,7 @@ git pull
 # Compile, check and runs
 cd ~/csee4840/CSEE-4840-Virtualized-HFT-Sim/sw
 make
-insmod hft_sim.ko
+insmod HFT_drivers.ko
 lsmod
 ./HFT_harness
 rmmod hft_sim
