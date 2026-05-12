@@ -1,7 +1,7 @@
 ifneq (${KERNELRELEASE},)
 
 # KERNELRELEASE defined: we are being compiled as part of the Kernel
-obj-m := vga_ball.o
+obj-m := HFT_drivers.o
 
 else
 
@@ -14,6 +14,9 @@ default: module HFT_harness
 
 module:
 	${MAKE} -C ${KERNEL_SOURCE} SUBDIRS=${PWD} modules
+
+HFT_harness: HFT_harness.c HFT_drivers.h
+	gcc -O2 -Wall -Wextra -o HFT_harness HFT_harness.c
 
 clean:
 	${MAKE} -C ${KERNEL_SOURCE} SUBDIRS=${PWD} clean
