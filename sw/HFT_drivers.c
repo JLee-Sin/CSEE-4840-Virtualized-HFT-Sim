@@ -59,7 +59,7 @@
 #define LOG_INFO_OVERFLOW_BIT           0
 #define LOG_INFO_DATA_VALID_BIT         1
 #define LOG_INFO_COUNT_SHIFT            2
-#define LOG_INFO_COUNT_MASK             (0x7FFu << LOG_INFO_COUNT_SHIFT) /* for depth 1024 */
+#define LOG_INFO_COUNT_MASK             (0x3FFFu << LOG_INFO_COUNT_SHIFT) /* 14b count for depth 8192 */
 #define LOG_INFO_ENGINE_IDLE_SHIFT      16
 #define LOG_INFO_ENGINE_IDLE_MASK       (0xFFu << LOG_INFO_ENGINE_IDLE_SHIFT)
 #define LOG_INFO_ALL_ENGINES_IDLE_BIT   24
@@ -141,10 +141,16 @@ static int hft_log_read_entry_hw(struct hft_log_entry *entry){
     if (!(info & BIT(LOG_INFO_DATA_VALID_BIT)))
         return -ETIMEDOUT;
 
-    // Read trade logs payload words
+    // Read trade log payload. New compact 64-bit layout:
+    //   word0[31:0]  = timestamp
+    //   word1[15:0]  = price
+    //   word1[23:16] = amount   (low 7 bits significant; trades cap < 128)
+    //   word1[31:24] = engine_id (low 3 bits significant; identifies symbol slot)
+    // word2 is unused by HW now and reads back as 0; we still write it
+    // to the struct for backward compatibility with older callers.
     entry->word0 = ioread32(REG_ADDR(REG_LOG_DATA0));
     entry->word1 = ioread32(REG_ADDR(REG_LOG_DATA1));
-    entry->word2 = ioread32(REG_ADDR(REG_LOG_DATA2)) & 0x003FFFFF; // Ignore top 10 bits. 
+    entry->word2 = 0;
 
     return 0;
 }

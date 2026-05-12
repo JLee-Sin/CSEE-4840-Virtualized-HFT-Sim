@@ -13,7 +13,7 @@
 `include "sys_def.svh"
 
 module HFT_SIM #(
-    parameter int TRADE_LOG_DEPTH = 1024
+    parameter int TRADE_LOG_DEPTH = 8192
 ) (
     input  logic                                    clk,
     input  logic                                    rst_n,
@@ -53,15 +53,15 @@ module HFT_SIM #(
 
     logic                       avl_log_read_pulse;
     logic [LOG_IDX_W-1:0]       avl_log_read_index;
-    logic [`ORDER_WIDTH-1:0]    avl_log_read_data;
+    logic [`TRADE_WIDTH-1:0]    avl_log_read_data;
     logic [LOG_COUNT_W-1:0]     avl_log_count;
     logic                       avl_log_overflow;
     logic                       avl_log_clear_pulse;
     logic                       trade_done;
 
     // Shadow register for software-visible log data
-    logic [`ORDER_WIDTH-1:0]   avl_log_data_shadow;
-    logic                      avl_log_data_valid;
+    logic [`TRADE_WIDTH-1:0]    avl_log_data_shadow;
+    logic                       avl_log_data_valid;
 
     // trade_log read is registered:
     // write LOG_CMD(read_req+index) -> pulse sw_re
@@ -278,9 +278,11 @@ module HFT_SIM #(
                     readdata[24] = all_engines_idle;
                     readdata[25] = trade_done;
                 end
+                // Compact 64-bit trade entry packed into 2 words; LOG_DATA2
+                // exists for backward compatibility with older SW and reads 0.
                 ADDR_LOG_DATA0: readdata = avl_log_data_shadow[31:0];
                 ADDR_LOG_DATA1: readdata = avl_log_data_shadow[63:32];
-                ADDR_LOG_DATA2: readdata = {10'd0, avl_log_data_shadow[85:64]};
+                ADDR_LOG_DATA2: readdata = 32'd0;
                 default: ;
             endcase
         end
@@ -435,15 +437,22 @@ module HFT_SIM #(
         end
     endgenerate
 
-    // Trade Output Aggregator (round-robin between 8 engines) feeds Trade Log
+    // Trade Output Aggregator (round-robin between 8 engines) feeds Trade Log.
+    // Aggregator compacts the 86-bit engine ORDER into a 64-bit TRADE_LOG_ENTRY
+    // (see hw/sys_def.svh) so the trade_log can be deeper without blowing the
+    // M10K block budget.
     logic                       agg_trade_valid;
-    logic [`ORDER_WIDTH-1:0]    agg_trade_data;
+    logic [`TRADE_WIDTH-1:0]    agg_trade_data;
     logic                       agg_trade_ready;
 
     // Denote when trades are sw_clear_done
     assign trade_done = (avl_disp_state == DONE) && all_engines_idle;
 
-    trade_aggregator #(.N(`N), .NODE_WIDTH(`ORDER_WIDTH)) u_trade_agg (
+    trade_aggregator #(
+        .N           (`N),
+        .NODE_WIDTH  (`ORDER_WIDTH),
+        .TRADE_WIDTH (`TRADE_WIDTH)
+    ) u_trade_agg (
         .clk             (clk),
         .rst_n           (rst_n),
         .eng_trade_valid (eng_trade_valid),
@@ -455,7 +464,7 @@ module HFT_SIM #(
     );
 
     trade_log #(
-        .NODE_WIDTH (`ORDER_WIDTH),
+        .NODE_WIDTH (`TRADE_WIDTH),
         .LOG_DEPTH  (TRADE_LOG_DEPTH)
     ) u_trade_log (
         .clk            (clk),

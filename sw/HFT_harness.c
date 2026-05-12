@@ -450,11 +450,19 @@ static int hft_log_wait_trade_done(FILE *progress_fp, int fd, int timeout_ms, in
     }
 }
 
-// Prints each trade log
+// Prints each trade log. Decode the compact 64-bit trade entry into
+// engine_id / amount / price / timestamp using the helpers from
+// HFT_drivers.h, and also dump the raw words for diagnostics.
 static void hft_log_dump_entries(FILE *fp, const struct hft_log_entry *e, uint32_t n){
+    fprintf(fp, "index,engine_id,amount,price,timestamp,raw_word0,raw_word1\n");
     for (uint32_t i = 0; i < n; i++) {
-        fprintf(fp, "%u,0x%08x,0x%08x,0x%06x\n",
-                i, e[i].word0, e[i].word1, (e[i].word2 & 0x003FFFFF));
+        fprintf(fp, "%u,%u,%u,%u,%u,0x%08x,0x%08x\n",
+                i,
+                HFT_TRADE_ENGINE_ID(&e[i]),
+                HFT_TRADE_AMOUNT(&e[i]),
+                HFT_TRADE_PRICE(&e[i]),
+                HFT_TRADE_TIMESTAMP(&e[i]),
+                e[i].word0, e[i].word1);
     }
 }
 
@@ -568,9 +576,8 @@ int main(){
         return 1;
     }
 
-    // Dump to stdout
+    // Dump to stdout (header is emitted by hft_log_dump_entries itself).
     printf("Read back %u trade log entries (overflow=%u)\n", got, overflow);
-    printf("index,word0,word1,word2_low22\n");
     hft_log_dump_entries(stdout, logbuf, got);
 
     free(logbuf);
