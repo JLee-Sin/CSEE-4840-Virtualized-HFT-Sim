@@ -434,7 +434,7 @@ module symbol_engine #(
                                   1'b0, order_in_data[14:0], // [68:53] amount (zero-ext)
                                   SYMBOL,                    // [52:32] symbol
                                   now_ts};                   // [31:0]  timestamp
-                pending_is_ask <= order_in_data[31];
+                pending_is_ask <= !order_in_data[31];
             end
             if (tstate == T_PEEK_BID_WAIT && bid_cmd_done) bid_root_snap <= bid_root;
             if (tstate == T_PEEK_ASK_WAIT && ask_cmd_done) ask_root_snap <= ask_root;

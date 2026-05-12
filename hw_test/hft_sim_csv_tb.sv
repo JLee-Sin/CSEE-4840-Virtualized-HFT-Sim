@@ -26,9 +26,9 @@ module hft_sim_csv_tb;
     // ------------------------------------------------------------------
     // Knobs
     // ------------------------------------------------------------------
-    localparam int MAX_ORDERS_PER_LANE = 5;   // small subset for sim speed
-    localparam int MAX_LOG_ENTRIES     = 1024; // matches TRADE_LOG_DEPTH
-    localparam int CYCLE_TIMEOUT       = 5_000_000;
+    localparam int MAX_ORDERS_PER_LANE = 1660;  // full CSV
+    localparam int MAX_LOG_ENTRIES     = 8192;  // matches new TRADE_LOG_DEPTH
+    localparam int CYCLE_TIMEOUT       = 10_000_000;
 
     string CSV_PATH [8];
     initial begin
@@ -217,8 +217,11 @@ module hft_sim_csv_tb;
         int   all_done;
         logic [31:0] st;
         logic [7:0]  ready_mask, full_mask;
+        int   loop_iter, pushed_total;
         begin
             int  done_loop;
+            loop_iter    = 0;
+            pushed_total = 0;
             for (int i = 0; i < 8; i++) begin
                 lane_idx[i]  = 0;
                 lane_done[i] = 1'b0;
@@ -239,19 +242,30 @@ module hft_sim_csv_tb;
                         ready_mask = status_ready_mask(st);
                         full_mask  = status_full_mask(st);
                         for (int lane = 0; lane < 8; lane++) begin
-                            if (!lane_done[lane] && !full_mask[lane] && ready_mask[lane]) begin
+                            if (!lane_done[lane]) begin
                                 if (lane_idx[lane] >= csv_count[lane]) begin
+                                    // done with this lane; FIFO state doesn't matter.
                                     lane_done[lane] = 1'b1;
-                                end else begin
+                                end else if (!full_mask[lane] && ready_mask[lane]) begin
                                     avl_write(R_PUSH0 + lane[4:0], csv_orders[lane][lane_idx[lane]]);
                                     lane_idx[lane]++;
+                                    pushed_total++;
                                 end
                             end
+                        end
+                        loop_iter++;
+                        if ((loop_iter % 500) == 0) begin
+                            $fdisplay(logfp,
+                                "PROGRESS iter=%0d cycle=%0d pushed=%0d ready=%02x full=%02x lane_idx=[%0d %0d %0d %0d %0d %0d %0d %0d]",
+                                loop_iter, cycle_count, pushed_total, ready_mask, full_mask,
+                                lane_idx[0], lane_idx[1], lane_idx[2], lane_idx[3],
+                                lane_idx[4], lane_idx[5], lane_idx[6], lane_idx[7]);
+                            $fflush(logfp);
                         end
                     end
                 end
             end
-            $fdisplay(logfp,"PUSH: round-robin complete");
+            $fdisplay(logfp,"PUSH: round-robin complete after %0d iter, %0d pushed", loop_iter, pushed_total);
         end
     endtask
 
@@ -300,7 +314,7 @@ module hft_sim_csv_tb;
         logic [15:0] e_qty;
         begin
             avl_read(R_LOG_INFO, info);
-            count = (info >> 2) & 32'h7FF;
+            count = (info >> 2) & 32'h3FFF;
             trade_count = count;
             $fdisplay(logfp,"LOG: %0d trade(s) recorded (overflow=%0d)", count, info[0]);
 
@@ -326,13 +340,19 @@ module hft_sim_csv_tb;
                 avl_read(R_LOG_DATA1, d1);
                 avl_read(R_LOG_DATA2, d2);
 
-                entry   = {d2[21:0], d1, d0};
-                e_type  = entry[85];
-                e_price = entry[84:69];
-                e_qty   = {1'b0, entry[67:53]};   // [68] is the spare zero bit
-
-                $fdisplay(logfp,"  trade[%0d] %s price=%0d qty=%0d (raw=%022x)",
-                         i, (e_type ? "BID" : "ASK"), e_price, e_qty, entry);
+                // New compact 64-bit layout: {engine_id[7:0], amount[7:0], price[15:0], timestamp[31:0]}
+                begin
+                    logic [2:0]  e_eng;
+                    logic [6:0]  e_amt;
+                    logic [15:0] e_prc;
+                    logic [31:0] e_ts;
+                    e_eng = d1[26:24];
+                    e_amt = d1[22:16];
+                    e_prc = d1[15:0];
+                    e_ts  = d0;
+                    $fdisplay(logfp,"  trade[%0d] eng=%0d price=%0d qty=%0d ts=%0d raw=%08x_%08x",
+                             i, e_eng, e_prc, e_amt, e_ts, d1, d0);
+                end
             end
         end
     endtask
