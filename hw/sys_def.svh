@@ -29,7 +29,9 @@
 `define WORD_WIDTH 32
 
 // Order Dispatch Parameters
-`define FIFO_SZ 1660  //
+// Depth of each per-symbol dispatch FIFO (number of dispatchable orders per symbol)
+// Data CSVs have 1210 data rows (excluding header/blank lines).
+`define FIFO_SZ 1210
 
 ///////////// STRUCTS /////////////
 
