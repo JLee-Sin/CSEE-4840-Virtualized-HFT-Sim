@@ -230,11 +230,6 @@ static long hft_ioctl(struct file *f, unsigned int cmd, unsigned long arg){
             li.all_engines_idle = !!(log_info_raw & BIT(LOG_INFO_ALL_ENGINES_IDLE_BIT));
             li.trade_done       = !!(log_info_raw & BIT(LOG_INFO_TRADE_DONE_BIT));
 
-            pr_info(DRIVER_NAME ": LOG_INFO raw=0x%08x state=%u count=%u eng_idle_mask=0x%02x all_idle=%u trade_done=%u\n",
-                    log_info_raw,
-                    ioread32(REG_ADDR(REG_STATUS)) & STATUS_STATE_MASK,
-                    li.count, li.engine_idle_mask, li.all_engines_idle, li.trade_done);
-
             if (copy_to_user(user_arg, &li, sizeof(li)))
                 ret = -EFAULT;
             break;
