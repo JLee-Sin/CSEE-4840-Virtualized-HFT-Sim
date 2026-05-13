@@ -51,3 +51,4 @@
 !hw/soc_system.qsf
 !hw/soc_system.qsys
 !hw/soc_system.tcl
+!hw/output_files/soc_system.fit.rpt
