@@ -171,6 +171,30 @@ int hft_transition_to_dispatch(int fd, int timeout_ms) {
     return hft_disp_wait_state(fd, HFT_STATE_DISPATCH, timeout_ms, /*poll_ms=*/1, true);
 }
 
+// Waits for the Dispatcher to transition to either DISPATCH or DONE
+// Only needed when using the buttons for the demo. 
+int hft_disp_wait_dispatch_or_done(int fd, int timeout_ms, int poll_ms) {
+    if (poll_ms <= 0) poll_ms = 1;
+    uint64_t deadline = (timeout_ms < 0) ? 0 : (now_ms() + (uint64_t)timeout_ms);
+
+    for (;;) {
+        struct hft_disp_status st;
+        int rc = hft_disp_get_status(fd, &st);
+        if (rc) return rc;
+
+        if (st.state == HFT_STATE_DISPATCH || st.state == HFT_STATE_DONE)
+            return 0;
+
+        if (st.state == HFT_STATE_IDLE)
+            return HFT_ERR_RESET;
+
+        if (timeout_ms >= 0 && now_ms() >= deadline)
+            return -ETIMEDOUT;
+
+        (void)sleep_ms((unsigned)poll_ms);
+    }
+}
+
 // Signals and wait until Order Dispatcher has transitioned to IDLE
 // This is once it has transitioned to DONE by itself
 int hft_transition_done_to_idle(int fd, int timeout_ms) {
@@ -588,11 +612,16 @@ int main(){
                 st.state, st.ready_mask, st.empty_mask, st.full_mask);
     
         // Transition Order Dispatcher to DISPATCH
-        // hft_transition_to_dispatch(hft_sim_fd, 1000);
-        rc = hft_disp_wait_state(hft_sim_fd, HFT_STATE_DISPATCH, -1, 10, true); // No timeout
+        // Or for IDLE (possible since we are using buttons. )
+        rc = hft_disp_wait_dispatch_or_done(hft_sim_fd, -1, 1);
         if (rc == HFT_ERR_RESET) { printf("Reset detected before dispatch. Restarting.\n"); continue; }
-        if (rc) { fprintf(stderr, "Error: wait for DISPATCH failed rc=%d\n", rc); return 1; }
-        printf("Virtualized HFT Simulator has started.\n");
+        if (rc) { fprintf(stderr, "Error: wait for DISPATCH/DONE failed rc=%d\n", rc); return 1; }
+        
+        hft_disp_get_status(hft_sim_fd, &st);
+        if (st.state == HFT_STATE_DISPATCH)
+            printf("Virtualized HFT Simulator has started.\n");
+        else
+            printf("Dispatcher already reached DONE before SW observed DISPATCH.\n");
         
         // Wait until trading is completely finished 
         struct hft_log_info final_li;
