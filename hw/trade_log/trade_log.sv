@@ -18,7 +18,7 @@
 
 module trade_log #(
     parameter int NODE_WIDTH = 64,
-    parameter int LOG_DEPTH  = 8192,
+    parameter int LOG_DEPTH  = 9000,
     parameter int CNT_WIDTH  = $clog2(LOG_DEPTH + 1),
     parameter int ADDR_WIDTH = $clog2(LOG_DEPTH)
 ) (
