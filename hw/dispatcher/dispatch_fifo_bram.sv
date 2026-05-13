@@ -36,7 +36,7 @@ module dispatch_fifo_bram #(
     localparam int CNT_W = $clog2(DEPTH + 1);
 
     // One BRAM-backed storage array per lane
-    (* ramstyle = "no_rw_check, M10K" *)
+    (* ramstyle = "no_rw_check, M10K", ram_init_file = "dispatch_fifo_zero.mif" *)
     logic [WIDTH-1:0] mem [0:DEPTH-1];
     
     // Pointers:

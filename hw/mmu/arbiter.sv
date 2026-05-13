@@ -443,6 +443,7 @@ module tracking_fifo #(
     localparam int PTR_WIDTH = $clog2(DEPTH);
     localparam int CNT_WIDTH = $clog2(DEPTH + 1);
 
+    (* ramstyle = "MLAB" *)
     logic [WIDTH-1:0]     mem [DEPTH];
     logic [PTR_WIDTH-1:0] wr_ptr, rd_ptr;
     logic [CNT_WIDTH-1:0] count;

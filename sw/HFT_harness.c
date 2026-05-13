@@ -25,7 +25,7 @@
 #define HFT_ERR_RESET (-ECONNRESET)
 
 // Driver
-int hft_sim_fd;
+static int hft_sim_fd = -1;
 
 // Ctrl+C handling
 static volatile sig_atomic_t g_stop = 0;
@@ -47,7 +47,9 @@ typedef struct {
 ///////// Time/Sleep /////////
 static uint64_t now_ms(void) {
     struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
+    if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0) {
+        return 0;
+    }
     return (uint64_t)ts.tv_sec * 1000ull + (uint64_t)ts.tv_nsec / 1000000ull;
 }
 
@@ -118,9 +120,12 @@ static int open_all_csvs(LaneCSVReader *r, const char *data_dir) {
 }
 
 static void csv_rewind_all(LaneCSVReader *csv) {
+    if (!csv) return;
     for (int i = 0; i < HFT_NUM_LANES; i++) {
-        rewind(csv->lane_csv[i]);
-        clearerr(csv->lane_csv[i]);
+        if (csv->lane_csv[i]) {
+            rewind(csv->lane_csv[i]);
+            clearerr(csv->lane_csv[i]);
+        }
         csv->lane_eof[i] = false;
     }
 }
@@ -487,7 +492,7 @@ static int hft_log_wait_trade_done(FILE *progress_fp, int fd, int timeout_ms, in
         if (st.state == HFT_STATE_IDLE) return HFT_ERR_RESET;
 
         // Get trade log info
-        struct hft_log_info li;
+        struct hft_log_info li = {0};
         int rc = hft_log_get_info(fd, &li);
 
         uint64_t t = now_ms();
@@ -606,8 +611,15 @@ int main(){
         if (rc) { fprintf(stderr, "ERROR: write_orders_round_robin failed: %d\n", rc); return 1;}
     
         // Debug: Check state before start dispatching
-        struct hft_disp_status st;
-        hft_disp_get_status(hft_sim_fd, &st);
+        struct hft_disp_status st = {0};
+        rc = hft_disp_get_status(hft_sim_fd, &st);
+        if (rc) {
+            fprintf(stderr, "Error: get status before dispatch failed rc=%d\n", rc);
+            close_all_csvs(&csv);
+            if (progress_fp) fclose(progress_fp);
+            if (hft_sim_fd >= 0) close(hft_sim_fd);
+            return 1;
+        }
         fprintf(stderr, "Before DISPATCH: state=%u ready=0x%02x empty=0x%02x full=0x%02x\n",
                 st.state, st.ready_mask, st.empty_mask, st.full_mask);
     
@@ -617,14 +629,21 @@ int main(){
         if (rc == HFT_ERR_RESET) { printf("Reset detected before dispatch. Restarting.\n"); continue; }
         if (rc) { fprintf(stderr, "Error: wait for DISPATCH/DONE failed rc=%d\n", rc); return 1; }
         
-        hft_disp_get_status(hft_sim_fd, &st);
+        rc = hft_disp_get_status(hft_sim_fd, &st);
+        if (rc) {
+            fprintf(stderr, "Error: get status after dispatch wait failed rc=%d\n", rc);
+            close_all_csvs(&csv);
+            if (progress_fp) fclose(progress_fp);
+            if (hft_sim_fd >= 0) close(hft_sim_fd);
+            return 1;
+        }
         if (st.state == HFT_STATE_DISPATCH)
             printf("Virtualized HFT Simulator has started.\n");
         else
             printf("Dispatcher already reached DONE before SW observed DISPATCH.\n");
         
         // Wait until trading is completely finished 
-        struct hft_log_info final_li;
+        struct hft_log_info final_li = {0};
         rc = hft_log_wait_trade_done(progress_fp, hft_sim_fd, 600000, 2, &final_li);
         if (rc == HFT_ERR_RESET) { printf("Reset detected during dispatch. Restarting.\n"); continue; }
         if (rc == -EINTR) { fprintf(stderr, "Interrupted (Ctrl+C). Exiting cleanly.\n"); close_all_csvs(&csv); return 0; }
@@ -683,6 +702,7 @@ int main(){
     // Clean up
     close_all_csvs(&csv);
     if (progress_fp) fclose(progress_fp);
+    if (hft_sim_fd >= 0) close(hft_sim_fd);
 
     return 0;
 }
