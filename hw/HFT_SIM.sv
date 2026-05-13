@@ -13,7 +13,7 @@
 `include "sys_def.svh"
 
 module HFT_SIM #(
-    parameter int TRADE_LOG_DEPTH = 9000
+    parameter int TRADE_LOG_DEPTH = 8704
 ) (
     input  logic                                    clk,
     input  logic                                    rst_n, // ignored
