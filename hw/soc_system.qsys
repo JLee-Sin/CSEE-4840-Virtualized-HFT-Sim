@@ -142,7 +142,7 @@
   <parameter name="resetSynchronousEdges" value="NONE" />
  </module>
  <module name="hft_sim_0" kind="hft_sim" version="1.0" enabled="1">
-  <parameter name="TRADE_LOG_DEPTH" value="1024" />
+  <parameter name="TRADE_LOG_DEPTH" value="16384" />
  </module>
  <module name="hps_0" kind="altera_hps" version="22.1" enabled="1">
   <parameter name="ABSTRACT_REAL_COMPARE_TEST" value="false" />
