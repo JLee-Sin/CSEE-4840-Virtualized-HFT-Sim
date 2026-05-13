@@ -565,9 +565,9 @@ int main(){
         struct hft_log_info final_li;
         rc = hft_log_wait_trade_done(progress_fp, hft_sim_fd, 600000, 2, &final_li);
         if (rc == HFT_ERR_RESET) { printf("Reset detected during dispatch. Restarting.\n"); continue; }
-        if (rc == -EINTR) { fprintf(stderr, "Interrupted (Ctrl+C). Exiting cleanly.\n"); }
-        if (rc) {fprintf(stderr, "ERROR: timed out / failed waiting for trade_done: %d\n", rc);}
-    
+        if (rc == -EINTR) { fprintf(stderr, "Interrupted (Ctrl+C). Exiting cleanly.\n"); close_all_csvs(&csv); return 0; }
+        if (rc) { fprintf(stderr, "ERROR: timed out / failed waiting for trade_done: %d\n", rc); close_all_csvs(&csv); return 1; }
+
         // Read all trade log entries 
         printf("Trading done.\n");
         printf("Trade log count (trades recorded): %u\n", final_li.count);
