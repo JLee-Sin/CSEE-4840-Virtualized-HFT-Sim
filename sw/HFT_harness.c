@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <errno.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -369,13 +370,27 @@ int hft_log_read_all(int fd, struct hft_log_entry *entries,
     return 0;
 }
 
+// Writes formatted output to both the given file stream and stdout, so probe
+// output is visible on the terminal AND captured in the progress log.
+static void tee_printf(FILE *fp, const char *fmt, ...) {
+    va_list args;
+    if (fp) {
+        va_start(args, fmt);
+        vfprintf(fp, fmt, args);
+        va_end(args);
+    }
+    va_start(args, fmt);
+    vfprintf(stdout, fmt, args);
+    va_end(args);
+}
+
 // Prints specified mask for all lanes: fifo full, fifo empty, or engine idle
 static void print_lane_mask(FILE *fp, const char *label, uint32_t mask) {
-    fprintf(fp, "%s:", label);
+    tee_printf(fp, "%s:", label);
     for (int lane = 0; lane < HFT_NUM_LANES; lane++) {
-        fprintf(fp, " %d=%c", lane, (mask & (1u << lane)) ? '1' : '0');
+        tee_printf(fp, " %d=%c", lane, (mask & (1u << lane)) ? '1' : '0');
     }
-    fprintf(fp, "\n");
+    tee_printf(fp, "\n");
 }
 
 // Prints the state of the Dispatcher
@@ -398,24 +413,25 @@ static void hft_print_progress_snapshot(FILE *fp, int fd) {
     int rc_li = hft_log_get_info(fd, &li);
 
     if (rc_st == 0) {
-        fprintf(fp, "[progress] Dispatcher state=%s (%u)\n", disp_state_str(st.state), st.state);
+        tee_printf(fp, "[progress] Dispatcher state=%s (%u)\n", disp_state_str(st.state), st.state);
         print_lane_mask(fp, "[progress] FIFO empty_mask", st.empty_mask);
         print_lane_mask(fp, "[progress] FIFO full_mask ", st.full_mask);
         print_lane_mask(fp, "[progress] FIFO ready_mask", st.ready_mask);
     } else {
-        fprintf(fp, "[progress] Dispatcher status unavailable (rc=%d)\n", rc_st);
+        tee_printf(fp, "[progress] Dispatcher status unavailable (rc=%d)\n", rc_st);
     }
 
     if (rc_li == 0) {
-        fprintf(fp, "[progress] Trade log count=%u overflow=%u trade_done=%u\n",
+        tee_printf(fp, "[progress] Trade log count=%u overflow=%u trade_done=%u\n",
                li.count, li.overflow, li.trade_done);
-        fprintf(fp, "[progress] Engines: all_idle=%u idle_mask=0x%08x\n",
+        tee_printf(fp, "[progress] Engines: all_idle=%u idle_mask=0x%08x\n",
                li.all_engines_idle, li.engine_idle_mask);
     } else if (rc_li == -EAGAIN) {
-        fprintf(fp, "[progress] Trade logger info not ready yet (rc=%d)\n", rc_li);
+        tee_printf(fp, "[progress] Trade logger info not ready yet (rc=%d)\n", rc_li);
     } else {
-        fprintf(fp, "[progress] Trade logger info unavailable (rc=%d)\n", rc_li);
+        tee_printf(fp, "[progress] Trade logger info unavailable (rc=%d)\n", rc_li);
     }
+    fflush(stdout);
 }
 
 // Checks that HFT_SIM is done trading by
@@ -434,10 +450,9 @@ static int hft_log_wait_trade_done(FILE *progress_fp, int fd, int timeout_ms, in
     for (;;) {
         // Handle logging being interrupted nicely
         if (g_stop) {
-            if (progress_fp) {
-                fprintf(progress_fp, "[progress] interrupted (SIGINT)\n");
-                fflush(progress_fp);
-            }
+            tee_printf(progress_fp, "[progress] interrupted (SIGINT)\n");
+            if (progress_fp) fflush(progress_fp);
+            fflush(stdout);
             return -EINTR;
         }
 
