@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <time.h>
 #include <string.h>
+#include <time.h>
+#include <unistd.h>
 #include "heap.h"
 
 void free_node_memory(struct MemoryManager *mm, struct OrderBook *ob, struct SimStats *stats) {
