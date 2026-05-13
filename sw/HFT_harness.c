@@ -591,7 +591,7 @@ int main(){
         printf("Trade log count (trades recorded): %u\n", final_li.count);
         printf("Trade log overflow: %u\n", final_li.overflow);
         uint32_t n = final_li.count;
-        if (n > 1024) n = 1024; // safety (matches RTL depth)
+        if (n > 16384) n = 16384; // safety (matches RTL depth)
         if (n == 0) {
             printf("No trades recorded.\n");
             close_all_csvs(&csv);
