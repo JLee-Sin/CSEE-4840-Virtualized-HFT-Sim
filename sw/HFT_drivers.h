@@ -36,7 +36,6 @@ struct hft_log_entry {
     __u32 index;   // input
     __u32 word0;   // output: [31:0]
     __u32 word1;   // output: [63:32]
-    __u32 word2;   // output: [85:64] in low 22 bits
 };
 
 // Communication with Order Dispatcher / Trade Logger

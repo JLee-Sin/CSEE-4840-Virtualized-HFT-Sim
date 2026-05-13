@@ -38,7 +38,6 @@
 #define REG_LOG_CMD     0x2C
 #define REG_LOG_DATA0   0x30
 #define REG_LOG_DATA1   0x34
-#define REG_LOG_DATA2   0x38
 #define REG_ADDR(x)     (dev.virtbase + (x))
 
 // Control and status bit defs
@@ -144,7 +143,6 @@ static int hft_log_read_entry_hw(struct hft_log_entry *entry){
     // Read trade logs payload words
     entry->word0 = ioread32(REG_ADDR(REG_LOG_DATA0));
     entry->word1 = ioread32(REG_ADDR(REG_LOG_DATA1));
-    entry->word2 = ioread32(REG_ADDR(REG_LOG_DATA2)) & 0x003FFFFF; // Ignore top 10 bits. 
 
     return 0;
 }

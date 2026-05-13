@@ -478,10 +478,28 @@ static int hft_log_wait_trade_done(FILE *progress_fp, int fd, int timeout_ms, in
 }
 
 // Prints each trade log
+// The following is assumed about the data: 
+// [63:56] engine_id (only low 3 bits used)
+// [55:48] quantity  (only low 7 bits used)
+// [47:32] price     (unsigned int, fixed-point with 2 decimal digits)
+// [31:0]  timestamp (unsigned int)
 static void hft_log_dump_entries(FILE *fp, const struct hft_log_entry *e, uint32_t n){
     for (uint32_t i = 0; i < n; i++) {
-        fprintf(fp, "%u,0x%08x,0x%08x,0x%06x\n",
-                i, e[i].word0, e[i].word1, (e[i].word2 & 0x003FFFFF));
+        uint32_t ts = e[i].word0;
+        uint32_t w1 = e[i].word1;
+
+        uint32_t engine_id   = (w1 >> 24) & 0x7u;     // only need low 3 bits
+        uint32_t quantity    = (w1 >> 16) & 0x7Fu;    // only need low 7 bits
+        uint32_t price_cents = (w1 >> 0)  & 0xFFFFu;  // 16-bit price
+
+        // Convert cents to string with 2 digits after decimal.
+        // Example: 12345 -> "123.45"
+        uint32_t dollars = price_cents / 100u;
+        uint32_t cents   = price_cents % 100u;
+
+        fprintf(fp, "%u,0x%08x,0x%08x,%u,%u,%u.%02u,%u\n",
+                i, e[i].word0, e[i].word1,
+                engine_id, quantity, dollars, cents, ts);
     }
 }
 
@@ -498,7 +516,7 @@ static void hft_log_dump_entries(FILE *fp, const struct hft_log_entry *e, uint32
 // 7 - WMT
 ///////////////////////////////////////////////////////////////////////
 int main(){
-    // Install Ctrl+C handler so we can flush/close logs cleanly.
+    // Install Ctrl+C handler to flush/close logs cleanly.
     struct sigaction sa;
     memset(&sa, 0, sizeof(sa));
     sa.sa_handler = on_sigint;
@@ -596,10 +614,21 @@ int main(){
             return 1;
         }
     
-        // Dump to stdout for now
+        // Dump to a text file
         printf("Read back %u trade log entries (overflow=%u)\n", got, overflow);
-        printf("index,word0,word1,word2_low22\n");
-        hft_log_dump_entries(stdout, logbuf, got);
+        
+        FILE *trades_fp = fopen("hft_trades.txt", "w");
+        if (!trades_fp) {
+            fprintf(stderr, "ERROR: could not open hft_trades.txt for writing: %s\n", strerror(errno));
+            free(logbuf);
+            close_all_csvs(&csv);
+            return 1;
+        }
+        
+        fprintf(trades_fp, "index,word0,word1,engine_id,quantity,price,timestamp\n");
+        hft_log_dump_entries(trades_fp, logbuf, got);
+        
+        fclose(trades_fp);
     
         free(logbuf);
 
