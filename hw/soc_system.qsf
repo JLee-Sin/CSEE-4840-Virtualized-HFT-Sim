@@ -19,7 +19,7 @@
 #
 # Quartus Prime
 # Version 22.1std.0 Build 915 10/25/2022 SC Lite Edition
-# Date created = 10:31:32  May 13, 2026
+# Date created = 11:51:34  May 13, 2026
 #
 # -------------------------------------------------------------------------- #
 #
@@ -41,7 +41,7 @@ set_global_assignment -name FAMILY "Cyclone V"
 set_global_assignment -name DEVICE 5CSEMA5F31C6
 set_global_assignment -name TOP_LEVEL_ENTITY soc_system_top
 set_global_assignment -name ORIGINAL_QUARTUS_VERSION 22.1STD.0
-set_global_assignment -name PROJECT_CREATION_TIME_DATE "10:31:32  MAY 13, 2026"
+set_global_assignment -name PROJECT_CREATION_TIME_DATE "11:51:34  MAY 13, 2026"
 set_global_assignment -name LAST_QUARTUS_VERSION "22.1std.0 Lite Edition"
 set_global_assignment -name PROJECT_OUTPUT_DIRECTORY output_files
 set_global_assignment -name CYCLONEII_RESERVE_NCEO_AFTER_CONFIGURATION "USE AS REGULAR IO"
@@ -856,15 +856,3 @@ set_global_assignment -name USE_DLL_FREQUENCY_FOR_DQS_DELAY_CHAIN ON
 set_global_assignment -name UNIPHY_SEQUENCER_DQS_CONFIG_ENABLE ON
 set_global_assignment -name OPTIMIZE_MULTI_CORNER_TIMING ON
 set_global_assignment -name ECO_REGENERATE_REPORT ON
-# Search paths for .mif files referenced via ram_init_file attribute
-set_global_assignment -name SEARCH_PATH mmu
-set_global_assignment -name SEARCH_PATH heap_engine
-set_global_assignment -name SEARCH_PATH trade_log
-set_global_assignment -name SEARCH_PATH dispatcher
-
-# Explicit MIF file listings (belt-and-suspenders alongside SEARCH_PATH above)
-set_global_assignment -name MIF_FILE mmu/page_table_zero.mif
-set_global_assignment -name MIF_FILE mmu/mem_bank_zero.mif
-set_global_assignment -name MIF_FILE heap_engine/priv_bram_zero.mif
-set_global_assignment -name MIF_FILE trade_log/trade_log_zero.mif
-set_global_assignment -name MIF_FILE dispatcher/dispatch_fifo_zero.mif
