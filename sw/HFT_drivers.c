@@ -218,22 +218,23 @@ static long hft_ioctl(struct file *f, unsigned int cmd, unsigned long arg){
         }
         
         case HFT_IOC_LOG_GET_INFO: {
-            // Check dispatcher STATUS for DONE state
-            disp_status_raw = ioread32(REG_ADDR(REG_STATUS));
-            disp_state = disp_status_raw & STATUS_STATE_MASK;
-            if (disp_state != HFT_STATE_DONE) {
-                ret = -EAGAIN;
-                break;
-            }
-        
-            // Read and unpack trade log status
+            // Probe: allow read regardless of dispatcher state so we can see
+            // engine_idle_mask / all_engines_idle / trade_done while the
+            // dispatcher is stuck in DISPATCH. count may be stale until DONE,
+            // but the engine status bits come straight from the HW and are
+            // always valid.
             log_info_raw = ioread32(REG_ADDR(REG_LOG_INFO));
             li.overflow         = !!(log_info_raw & BIT(LOG_INFO_OVERFLOW_BIT));
             li.count            = (log_info_raw & LOG_INFO_COUNT_MASK) >> LOG_INFO_COUNT_SHIFT;
             li.engine_idle_mask = (log_info_raw & LOG_INFO_ENGINE_IDLE_MASK) >> LOG_INFO_ENGINE_IDLE_SHIFT;
             li.all_engines_idle = !!(log_info_raw & BIT(LOG_INFO_ALL_ENGINES_IDLE_BIT));
             li.trade_done       = !!(log_info_raw & BIT(LOG_INFO_TRADE_DONE_BIT));
-        
+
+            pr_info(DRIVER_NAME ": LOG_INFO raw=0x%08x state=%u count=%u eng_idle_mask=0x%02x all_idle=%u trade_done=%u\n",
+                    log_info_raw,
+                    ioread32(REG_ADDR(REG_STATUS)) & STATUS_STATE_MASK,
+                    li.count, li.engine_idle_mask, li.all_engines_idle, li.trade_done);
+
             if (copy_to_user(user_arg, &li, sizeof(li)))
                 ret = -EFAULT;
             break;
