@@ -868,3 +868,17 @@ set_global_assignment -name MIF_FILE soc_system/synthesis/submodules/priv_bram_z
 set_global_assignment -name MIF_FILE soc_system/synthesis/submodules/trade_log_zero.mif
 set_global_assignment -name MIF_FILE soc_system/synthesis/submodules/dispatch_fifo_zero.mif
 # === END: do not remove ===
+
+# === BEGIN: do not remove. Required for M10K zero-init .mif resolution. ===
+# Also mirrored in soc_system.tcl so they're regenerated when the project rebuilds.
+set_global_assignment -name SEARCH_PATH soc_system/synthesis/submodules
+set_global_assignment -name SEARCH_PATH mmu
+set_global_assignment -name SEARCH_PATH heap_engine
+set_global_assignment -name SEARCH_PATH trade_log
+set_global_assignment -name SEARCH_PATH dispatcher
+set_global_assignment -name MIF_FILE soc_system/synthesis/submodules/page_table_zero.mif
+set_global_assignment -name MIF_FILE soc_system/synthesis/submodules/mem_bank_zero.mif
+set_global_assignment -name MIF_FILE soc_system/synthesis/submodules/priv_bram_zero.mif
+set_global_assignment -name MIF_FILE soc_system/synthesis/submodules/trade_log_zero.mif
+set_global_assignment -name MIF_FILE soc_system/synthesis/submodules/dispatch_fifo_zero.mif
+# === END: do not remove ===

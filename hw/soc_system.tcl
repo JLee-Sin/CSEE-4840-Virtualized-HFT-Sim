@@ -38,6 +38,31 @@ foreach filename $qip {
     set_global_assignment -name QIP_FILE $filename
 }
 
+# Search paths for .mif memory initialization files (referenced via
+# ram_init_file attribute on inferred BRAMs). Without these, Quartus
+# silently fails to resolve the filenames and BRAMs come up uninitialized
+# on the board.
+foreach searchPath {
+    soc_system/synthesis/submodules
+    mmu
+    heap_engine
+    trade_log
+    dispatcher
+} {
+    set_global_assignment -name SEARCH_PATH $searchPath
+}
+
+# Explicit MIF file listings (belt-and-suspenders alongside SEARCH_PATH).
+foreach mifFile {
+    soc_system/synthesis/submodules/page_table_zero.mif
+    soc_system/synthesis/submodules/mem_bank_zero.mif
+    soc_system/synthesis/submodules/priv_bram_zero.mif
+    soc_system/synthesis/submodules/trade_log_zero.mif
+    soc_system/synthesis/submodules/dispatch_fifo_zero.mif
+} {
+    set_global_assignment -name MIF_FILE $mifFile
+}
+
 # FPGA pin assignments
 
 foreach {pin port} {
