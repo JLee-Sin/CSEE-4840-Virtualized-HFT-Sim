@@ -57,8 +57,8 @@ add_fileset_file hex7seg.sv SYSTEM_VERILOG PATH soc_io/hex7seg.sv
 # 
 # parameters
 # 
-add_parameter TRADE_LOG_DEPTH INTEGER 1024 ""
-set_parameter_property TRADE_LOG_DEPTH DEFAULT_VALUE 1024
+add_parameter TRADE_LOG_DEPTH INTEGER 8704 ""
+set_parameter_property TRADE_LOG_DEPTH DEFAULT_VALUE 8704
 set_parameter_property TRADE_LOG_DEPTH DISPLAY_NAME TRADE_LOG_DEPTH
 set_parameter_property TRADE_LOG_DEPTH WIDTH ""
 set_parameter_property TRADE_LOG_DEPTH TYPE INTEGER
