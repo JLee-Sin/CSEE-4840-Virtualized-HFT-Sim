@@ -43,6 +43,16 @@ module hft_sim_csv_tb;
     end
 
     // ------------------------------------------------------------------
+    // Optional wave dump (compile with +define+DUMP_WAVES)
+    // ------------------------------------------------------------------
+`ifdef DUMP_WAVES
+    initial begin
+        $dumpfile("/tmp/csv_tb.vcd");
+        $dumpvars(0, dut);
+    end
+`endif
+
+    // ------------------------------------------------------------------
     // Clock + reset
     // ------------------------------------------------------------------
     logic clk = 0;
