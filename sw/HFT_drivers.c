@@ -58,7 +58,7 @@
 #define LOG_INFO_OVERFLOW_BIT           0
 #define LOG_INFO_DATA_VALID_BIT         1
 #define LOG_INFO_COUNT_SHIFT            2
-#define LOG_INFO_COUNT_MASK             (0x7FFFu << LOG_INFO_COUNT_SHIFT) /* 15b count for depth 16384 */
+#define LOG_INFO_COUNT_MASK             (0x7FFFu << LOG_INFO_COUNT_SHIFT) /* 15b mask covers count for depth up to 32767 (current TRADE_LOG_DEPTH = 8192) */
 #define LOG_INFO_ENGINE_IDLE_SHIFT      17
 #define LOG_INFO_ENGINE_IDLE_MASK       (0xFFu << LOG_INFO_ENGINE_IDLE_SHIFT)
 #define LOG_INFO_ALL_ENGINES_IDLE_BIT   25

@@ -27,7 +27,7 @@ module hft_sim_csv_tb;
     // Knobs
     // ------------------------------------------------------------------
     localparam int MAX_ORDERS_PER_LANE = 1660;  // full CSV
-    localparam int MAX_LOG_ENTRIES     = 16384;  // matches new TRADE_LOG_DEPTH
+    localparam int MAX_LOG_ENTRIES     = 8192;   // matches new TRADE_LOG_DEPTH
     localparam int CYCLE_TIMEOUT       = 10_000_000;
 
     string CSV_PATH [8];
