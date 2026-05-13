@@ -159,7 +159,6 @@ static long hft_ioctl(struct file *f, unsigned int cmd, unsigned long arg){
     struct hft_log_info li;
     struct hft_log_entry le;
     __u32 disp_status_raw;
-    __u32 disp_state;
     __u32 log_info_raw;
     long ret = 0;
 

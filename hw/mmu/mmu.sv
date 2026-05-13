@@ -345,7 +345,7 @@ module mmu (
     logic ptw1_pt_we_eff;
     assign ptw1_pt_we_eff = ptw1_pt_we && !same_alloc_collision;
 
-    (* ramstyle = "M10K, no_rw_check" *)
+    (* ramstyle = "M10K, no_rw_check", ram_init_file = "page_table_zero.mif" *)
     logic [14:0] page_table [0:16383];
 
     always_ff @(posedge clk) begin

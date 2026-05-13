@@ -480,7 +480,7 @@ module priv_bram #(
     input  logic [WIDTH-1:0]         wdata,
     output logic [WIDTH-1:0]         rdata
 );
-    (* ramstyle = "M10K" *)
+    (* ramstyle = "M10K", ram_init_file = "priv_bram_zero.mif" *)
     logic [WIDTH-1:0] mem [0:DEPTH-1];
 
     always_ff @(posedge clk) begin
