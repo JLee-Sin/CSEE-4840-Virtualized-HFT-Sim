@@ -1,4 +1,4 @@
-module arbiter (
+module arbiter(
 	input logic 	    clk,
 	input logic 	    rst_n,
 
@@ -204,16 +204,20 @@ module arbiter (
     assign {e_va_2, e_wr_2, e_pa_2, e_wd_2} = fifo_rd_data[2];
     assign {e_va_3, e_wr_3, e_pa_3, e_wd_3} = fifo_rd_data[3];
  
-    logic [31:0] in_flight_va  [4];
     logic [85:0] resp_buf_data [4];
     logic [31:0] resp_buf_va   [4];
     logic [3:0]  resp_buf_valid;
+    
+    logic        va_full  [4];
+    logic        va_empty [4];
+    logic [31:0] va_dout  [4];
+    logic        va_pop   [4];
  
     logic  dispatch_0, dispatch_1, dispatch_2, dispatch_3;
-    assign dispatch_0 = !fifo_empty[0] && !mem_busy_0 && !resp_buf_valid[0];
-    assign dispatch_1 = !fifo_empty[1] && !mem_busy_1 && !resp_buf_valid[1];
-    assign dispatch_2 = !fifo_empty[2] && !mem_busy_2 && !resp_buf_valid[2];
-    assign dispatch_3 = !fifo_empty[3] && !mem_busy_3 && !resp_buf_valid[3];
+    assign dispatch_0 = !fifo_empty[0] && !mem_busy_0 && !resp_buf_valid[0] && !va_full[0];
+    assign dispatch_1 = !fifo_empty[1] && !mem_busy_1 && !resp_buf_valid[1] && !va_full[1];
+    assign dispatch_2 = !fifo_empty[2] && !mem_busy_2 && !resp_buf_valid[2] && !va_full[2];
+    assign dispatch_3 = !fifo_empty[3] && !mem_busy_3 && !resp_buf_valid[3] && !va_full[3];
  
     assign fifo_rd_en[0] = dispatch_0;
     assign fifo_rd_en[1] = dispatch_1;
@@ -240,27 +244,38 @@ module arbiter (
     assign mem_we_3    = dispatch_3 &&  e_wr_3;
     assign mem_re_3    = dispatch_3 && !e_wr_3;
  
-    always_ff @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
-            in_flight_va[0] <= 32'd0;
-            in_flight_va[1] <= 32'd0;
-            in_flight_va[2] <= 32'd0;
-            in_flight_va[3] <= 32'd0;
-        end else begin
-	    if (dispatch_0) begin
-		in_flight_va[0] <= e_va_0;
-	    end
-	    if (dispatch_1) begin
-		in_flight_va[1] <= e_va_1;
-	    end
-	    if (dispatch_2) begin
-		in_flight_va[2] <= e_va_2;
-	    end
-	    if (dispatch_3) begin
-		in_flight_va[3] <= e_va_3;
-	    end
-        end
-    end
+    assign va_pop[0] = (mem_rdata_valid_0 || mem_wdone_0) && !resp_buf_valid[0];
+    assign va_pop[1] = (mem_rdata_valid_1 || mem_wdone_1) && !resp_buf_valid[1];
+    assign va_pop[2] = (mem_rdata_valid_2 || mem_wdone_2) && !resp_buf_valid[2];
+    assign va_pop[3] = (mem_rdata_valid_3 || mem_wdone_3) && !resp_buf_valid[3];
+
+    tracking_fifo #(.WIDTH(32), .DEPTH(8)) u_va_fifo_0 (
+        .clk(clk), .rst_n(rst_n),
+        .push(dispatch_0), .din(e_va_0),
+        .pop(va_pop[0]),   .dout(va_dout[0]),
+        .full(va_full[0]), .empty(va_empty[0])
+    );
+
+    tracking_fifo #(.WIDTH(32), .DEPTH(8)) u_va_fifo_1 (
+        .clk(clk), .rst_n(rst_n),
+        .push(dispatch_1), .din(e_va_1),
+        .pop(va_pop[1]),   .dout(va_dout[1]),
+        .full(va_full[1]), .empty(va_empty[1])
+    );
+
+    tracking_fifo #(.WIDTH(32), .DEPTH(8)) u_va_fifo_2 (
+        .clk(clk), .rst_n(rst_n),
+        .push(dispatch_2), .din(e_va_2),
+        .pop(va_pop[2]),   .dout(va_dout[2]),
+        .full(va_full[2]), .empty(va_empty[2])
+    );
+
+    tracking_fifo #(.WIDTH(32), .DEPTH(8)) u_va_fifo_3 (
+        .clk(clk), .rst_n(rst_n),
+        .push(dispatch_3), .din(e_va_3),
+        .pop(va_pop[3]),   .dout(va_dout[3]),
+        .full(va_full[3]), .empty(va_empty[3])
+    );
 
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
@@ -279,7 +294,7 @@ module arbiter (
         end else begin
             if ((mem_rdata_valid_0 || mem_wdone_0) && !resp_buf_valid[0]) begin
                 resp_buf_data[0]  <= mem_rdata_valid_0 ? mem_rdata_0 : 86'd0;
-                resp_buf_va[0]    <= in_flight_va[0];
+                resp_buf_va[0]    <= va_dout[0]; // Fetch the oldest VA from tracking FIFO
                 resp_buf_valid[0] <= 1'b1;
             end else if (resp_buf_valid[0]) begin
                 resp_buf_valid[0] <= 1'b0;
@@ -287,7 +302,7 @@ module arbiter (
 
             if ((mem_rdata_valid_1 || mem_wdone_1) && !resp_buf_valid[1]) begin
                 resp_buf_data[1]  <= mem_rdata_valid_1 ? mem_rdata_1 : 86'd0;
-                resp_buf_va[1]    <= in_flight_va[1];
+                resp_buf_va[1]    <= va_dout[1]; // Fetch the oldest VA from tracking FIFO
                 resp_buf_valid[1] <= 1'b1;
             end else if (resp_buf_valid[1]) begin
                 resp_buf_valid[1] <= 1'b0;
@@ -295,7 +310,7 @@ module arbiter (
 
             if ((mem_rdata_valid_2 || mem_wdone_2) && !resp_buf_valid[2]) begin
                 resp_buf_data[2]  <= mem_rdata_valid_2 ? mem_rdata_2 : 86'd0;
-                resp_buf_va[2]    <= in_flight_va[2];
+                resp_buf_va[2]    <= va_dout[2]; // Fetch the oldest VA from tracking FIFO
                 resp_buf_valid[2] <= 1'b1;
             end else if (resp_buf_valid[2]) begin
                 resp_buf_valid[2] <= 1'b0;
@@ -303,7 +318,7 @@ module arbiter (
 
             if ((mem_rdata_valid_3 || mem_wdone_3) && !resp_buf_valid[3]) begin
                 resp_buf_data[3]  <= mem_rdata_valid_3 ? mem_rdata_3 : 86'd0;
-                resp_buf_va[3]    <= in_flight_va[3];
+                resp_buf_va[3]    <= va_dout[3]; // Fetch the oldest VA from tracking FIFO
                 resp_buf_valid[3] <= 1'b1;
             end else if (resp_buf_valid[3]) begin
                 resp_buf_valid[3] <= 1'b0;
@@ -406,4 +421,57 @@ module dual_write_fifo #(
         end
     end
  
+endmodule
+
+module tracking_fifo #(
+    parameter int WIDTH = 32,
+    parameter int DEPTH = 8
+) (
+    input  logic             clk,
+    input  logic             rst_n,
+
+    input  logic             push,
+    input  logic [WIDTH-1:0] din,
+
+    input  logic             pop,
+    output logic [WIDTH-1:0] dout,
+
+    output logic             full,
+    output logic             empty
+);
+
+    localparam int PTR_WIDTH = $clog2(DEPTH);
+    localparam int CNT_WIDTH = $clog2(DEPTH + 1);
+
+    (* ramstyle = "MLAB" *)
+    logic [WIDTH-1:0]     mem [DEPTH];
+    logic [PTR_WIDTH-1:0] wr_ptr, rd_ptr;
+    logic [CNT_WIDTH-1:0] count;
+
+    assign full  = (count == DEPTH);
+    assign empty = (count == 0);
+    assign dout  = mem[rd_ptr];
+
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            wr_ptr <= '0;
+            rd_ptr <= '0;
+            count  <= '0;
+        end else begin
+            if (push && !full) begin
+                mem[wr_ptr] <= din;
+                wr_ptr <= (wr_ptr == DEPTH-1) ? '0 : wr_ptr + 1'b1;
+            end
+            
+            if (pop && !empty) begin
+                rd_ptr <= (rd_ptr == DEPTH-1) ? '0 : rd_ptr + 1'b1;
+            end
+            
+            case ({push && !full, pop && !empty})
+                2'b10: count <= count + 1'b1;
+                2'b01: count <= count - 1'b1;
+                default: count <= count;
+            endcase
+        end
+    end
 endmodule
