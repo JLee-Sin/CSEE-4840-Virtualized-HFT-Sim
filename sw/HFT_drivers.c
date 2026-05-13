@@ -38,7 +38,6 @@
 #define REG_LOG_CMD     0x2C
 #define REG_LOG_DATA0   0x30
 #define REG_LOG_DATA1   0x34
-#define REG_LOG_DATA2   0x38
 #define REG_ADDR(x)     (dev.virtbase + (x))
 
 // Control and status bit defs
@@ -141,16 +140,9 @@ static int hft_log_read_entry_hw(struct hft_log_entry *entry){
     if (!(info & BIT(LOG_INFO_DATA_VALID_BIT)))
         return -ETIMEDOUT;
 
-    // Read trade log payload. New compact 64-bit layout:
-    //   word0[31:0]  = timestamp
-    //   word1[15:0]  = price
-    //   word1[23:16] = amount   (low 7 bits significant; trades cap < 128)
-    //   word1[31:24] = engine_id (low 3 bits significant; identifies symbol slot)
-    // word2 is unused by HW now and reads back as 0; we still write it
-    // to the struct for backward compatibility with older callers.
+    // Read trade logs payload words
     entry->word0 = ioread32(REG_ADDR(REG_LOG_DATA0));
     entry->word1 = ioread32(REG_ADDR(REG_LOG_DATA1));
-    entry->word2 = 0;
 
     return 0;
 }
@@ -212,6 +204,7 @@ static long hft_ioctl(struct file *f, unsigned int cmd, unsigned long arg){
         case HFT_IOC_DISP_GET_STATUS: {
             // Read dispatcher status
             disp_status_raw = ioread32(REG_ADDR(REG_STATUS));
+            pr_info("HFT REG_STATUS raw=0x%08x\n", disp_status_raw);
         
             // Unpack signals
             st.state      = disp_status_raw & STATUS_STATE_MASK;

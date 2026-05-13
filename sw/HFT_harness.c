@@ -20,6 +20,9 @@
 #define HFT_STATE_DISPATCH 2
 #define HFT_STATE_DONE     3
 
+// Error macros
+#define HFT_ERR_RESET (-ECONNRESET)
+
 // Driver
 int hft_sim_fd;
 
@@ -113,6 +116,14 @@ static int open_all_csvs(LaneCSVReader *r, const char *data_dir) {
     return 0;
 }
 
+static void csv_rewind_all(LaneCSVReader *csv) {
+    for (int i = 0; i < HFT_NUM_LANES; i++) {
+        rewind(csv->lane_csv[i]);
+        clearerr(csv->lane_csv[i]);
+        csv->lane_eof[i] = false;
+    }
+}
+
 ///////// Order Dispatcher States /////////
 // Get Status of Order Dispatcher
 int hft_disp_get_status(int fd, struct hft_disp_status *st) {
@@ -122,7 +133,7 @@ int hft_disp_get_status(int fd, struct hft_disp_status *st) {
 }
 
 // Wait for a specific state in the Order Dispatcher
-int hft_disp_wait_state(int fd, uint32_t want_state, int timeout_ms, int poll_ms) {
+int hft_disp_wait_state(int fd, uint32_t want_state, int timeout_ms, int poll_ms, bool abort_on_idle) {
     if (poll_ms <= 0) poll_ms = 1;
     uint64_t deadline = (timeout_ms < 0) ? 0 : (now_ms() + (uint64_t)timeout_ms);
 
@@ -132,8 +143,12 @@ int hft_disp_wait_state(int fd, uint32_t want_state, int timeout_ms, int poll_ms
         int rc = hft_disp_get_status(fd, &st);
         if (rc) return rc;
 
-        // Chheck for desire state
+        // Check for desire state
         if (st.state == want_state) return 0;
+
+        // Check if board was reseted: Dispatcher went into IDLE all the sudden
+        if (abort_on_idle && st.state == HFT_STATE_IDLE && want_state != HFT_STATE_IDLE)
+            return HFT_ERR_RESET;
 
         // Check for timeout
         if (timeout_ms >= 0 && now_ms() >= deadline) return -ETIMEDOUT;
@@ -144,7 +159,7 @@ int hft_disp_wait_state(int fd, uint32_t want_state, int timeout_ms, int poll_ms
 // Signals and wait until Order Dispatcher has transitioned to DISPATCHT
 int hft_transition_to_dispatch(int fd, int timeout_ms) {
     // Check that dispatcher is in WRITE (otherwise DISPATCH pulse is ignored).
-    int rc = hft_disp_wait_state(fd, HFT_STATE_WRITE, timeout_ms, 1);
+    int rc = hft_disp_wait_state(fd, HFT_STATE_WRITE, timeout_ms, 1, false);
     if (rc) return rc;
 
     // Signal transition
@@ -152,20 +167,20 @@ int hft_transition_to_dispatch(int fd, int timeout_ms) {
     if (rc < 0) return -errno;
 
     // Wait until DISPATCH is observed.
-    return hft_disp_wait_state(fd, HFT_STATE_DISPATCH, timeout_ms, /*poll_ms=*/1);
+    return hft_disp_wait_state(fd, HFT_STATE_DISPATCH, timeout_ms, /*poll_ms=*/1, true);
 }
 
 // Signals and wait until Order Dispatcher has transitioned to IDLE
 // This is once it has transitioned to DONE by itself
 int hft_transition_done_to_idle(int fd, int timeout_ms) {
-    int rc = hft_disp_wait_state(fd, HFT_STATE_DONE, timeout_ms, 1);
+    int rc = hft_disp_wait_state(fd, HFT_STATE_DONE, timeout_ms, 1, false);
     if (rc) return rc;
 
     // Indicate to Order Dispatcher to transition to IDLE state
     rc = ioctl(fd, HFT_IOC_DISP_CLEAR_DONE);
     if (rc < 0) return -errno;
 
-    return hft_disp_wait_state(fd, HFT_STATE_IDLE, timeout_ms, 1);
+    return hft_disp_wait_state(fd, HFT_STATE_IDLE, timeout_ms, 1, false);
 }
 
 // Simple herlper fucntion to check if all FIFOs are full
@@ -286,6 +301,9 @@ int hft_write_orders_round_robin(int fd, hft_next_order_fn next_order, void *ctx
 
         // Stop if all FIFOs full
         if (hft_all_fifos_full_mask(st.full_mask)) return 0;
+
+        // Check if board was reseted: dispatcher when back to IDLE
+        if (st.state == HFT_STATE_IDLE) return HFT_ERR_RESET;
 
         // Check if Order Dispatcher in WRITE state
         if (st.state != HFT_STATE_WRITE)
@@ -414,6 +432,7 @@ static int hft_log_wait_trade_done(FILE *progress_fp, int fd, int timeout_ms, in
     uint64_t next_print_ms = 0;
 
     for (;;) {
+        // Handle logging being interrupted nicely
         if (g_stop) {
             if (progress_fp) {
                 fprintf(progress_fp, "[progress] interrupted (SIGINT)\n");
@@ -421,6 +440,14 @@ static int hft_log_wait_trade_done(FILE *progress_fp, int fd, int timeout_ms, in
             }
             return -EINTR;
         }
+
+        // Detect if board was reseted: Dispatcher back to IDLE
+        struct hft_disp_status st;
+        int rc_st = hft_disp_get_status(fd, &st);
+        if (rc_st) return rc_st;
+        if (st.state == HFT_STATE_IDLE) return HFT_ERR_RESET;
+
+        // Get trade log info
         struct hft_log_info li;
         int rc = hft_log_get_info(fd, &li);
 
@@ -450,19 +477,29 @@ static int hft_log_wait_trade_done(FILE *progress_fp, int fd, int timeout_ms, in
     }
 }
 
-// Prints each trade log. Decode the compact 64-bit trade entry into
-// engine_id / amount / price / timestamp using the helpers from
-// HFT_drivers.h, and also dump the raw words for diagnostics.
+// Prints each trade log
+// The following is assumed about the data: 
+// [63:56] engine_id (only low 3 bits used)
+// [55:48] quantity  (only low 7 bits used)
+// [47:32] price     (unsigned int, fixed-point with 2 decimal digits)
+// [31:0]  timestamp (unsigned int)
 static void hft_log_dump_entries(FILE *fp, const struct hft_log_entry *e, uint32_t n){
-    fprintf(fp, "index,engine_id,amount,price,timestamp,raw_word0,raw_word1\n");
     for (uint32_t i = 0; i < n; i++) {
-        fprintf(fp, "%u,%u,%u,%u,%u,0x%08x,0x%08x\n",
-                i,
-                HFT_TRADE_ENGINE_ID(&e[i]),
-                HFT_TRADE_AMOUNT(&e[i]),
-                HFT_TRADE_PRICE(&e[i]),
-                HFT_TRADE_TIMESTAMP(&e[i]),
-                e[i].word0, e[i].word1);
+        uint32_t ts = e[i].word0;
+        uint32_t w1 = e[i].word1;
+
+        uint32_t engine_id   = (w1 >> 24) & 0x7u;     // only need low 3 bits
+        uint32_t quantity    = (w1 >> 16) & 0x7Fu;    // only need low 7 bits
+        uint32_t price_cents = (w1 >> 0)  & 0xFFFFu;  // 16-bit price
+
+        // Convert cents to string with 2 digits after decimal.
+        // Example: 12345 -> "123.45"
+        uint32_t dollars = price_cents / 100u;
+        uint32_t cents   = price_cents % 100u;
+
+        fprintf(fp, "%u,0x%08x,0x%08x,%u,%u,%u.%02u,%u\n",
+                i, e[i].word0, e[i].word1,
+                engine_id, quantity, dollars, cents, ts);
     }
 }
 
@@ -479,7 +516,7 @@ static void hft_log_dump_entries(FILE *fp, const struct hft_log_entry *e, uint32
 // 7 - WMT
 ///////////////////////////////////////////////////////////////////////
 int main(){
-    // Install Ctrl+C handler so we can flush/close logs cleanly.
+    // Install Ctrl+C handler to flush/close logs cleanly.
     struct sigaction sa;
     memset(&sa, 0, sizeof(sa));
     sa.sa_handler = on_sigint;
@@ -507,84 +544,100 @@ int main(){
     int rc = open_all_csvs(&csv, data_dir); // Error messages already handled
     if (rc) return 1;
 
-    // Clear counter and overflow of Trade logs
-    if (ioctl(hft_sim_fd, HFT_IOC_LOG_CLEAR) < 0) return -errno;
+    for (;;) {
+        // On CTL+C
+        if (g_stop) break;
 
-    // Transition Order Dispatcher to WRITE
-    if (ioctl(hft_sim_fd, HFT_IOC_DISP_BEGIN_WRITE) < 0) return -errno;
-    hft_disp_wait_state(hft_sim_fd, HFT_STATE_WRITE, 1000, 1);
-    printf("Writing Data to Order Dispatcher.\n");
+        // Rewind CSV 
+        csv_rewind_all(&csv);
+        
+        // Clear counter and overflow of Trade logs
+        if (ioctl(hft_sim_fd, HFT_IOC_LOG_CLEAR) < 0) return -errno;
+    
+        // Transition Order Dispatcher to WRITE
+        //if (ioctl(hft_sim_fd, HFT_IOC_DISP_BEGIN_WRITE) < 0) return -errno;
+        rc = hft_disp_wait_state(hft_sim_fd, HFT_STATE_WRITE, -1, 10, false); // No timeout
+        if (rc == HFT_ERR_RESET) { printf("Reset detected. Restarting.\n"); continue; }
+        if (rc) { fprintf(stderr, "Error: wait for WRITE failed rc=%d\n", rc); return 1; }
+    
+        // Fill FIFOs round-robin from CSVs
+        printf("Writing Data to Order Dispatcher.\n");
+        rc = hft_write_orders_round_robin(hft_sim_fd, lane_csv_next_order, &csv, 30000);
+        if (rc == HFT_ERR_RESET) { printf("Reset detected during write. Restarting.\n"); continue; }
+        if (rc) { fprintf(stderr, "ERROR: write_orders_round_robin failed: %d\n", rc); return 1;}
+    
+        // Debug: Check state before start dispatching
+        struct hft_disp_status st;
+        hft_disp_get_status(hft_sim_fd, &st);
+        fprintf(stderr, "Before DISPATCH: state=%u ready=0x%02x empty=0x%02x full=0x%02x\n",
+                st.state, st.ready_mask, st.empty_mask, st.full_mask);
+    
+        // Transition Order Dispatcher to DISPATCH
+        // hft_transition_to_dispatch(hft_sim_fd, 1000);
+        rc = hft_disp_wait_state(hft_sim_fd, HFT_STATE_DISPATCH, -1, 10, true); // No timeout
+        if (rc == HFT_ERR_RESET) { printf("Reset detected before dispatch. Restarting.\n"); continue; }
+        if (rc) { fprintf(stderr, "Error: wait for DISPATCH failed rc=%d\n", rc); return 1; }
+        printf("Virtualized HFT Simulator has started.\n");
+        
+        // Wait until trading is completely finished 
+        struct hft_log_info final_li;
+        rc = hft_log_wait_trade_done(progress_fp, hft_sim_fd, 600000, 2, &final_li);
+        if (rc == HFT_ERR_RESET) { printf("Reset detected during dispatch. Restarting.\n"); continue; }
+        if (rc == -EINTR) { fprintf(stderr, "Interrupted (Ctrl+C). Exiting cleanly.\n"); close_all_csvs(&csv); return 0; }
+        if (rc) { fprintf(stderr, "ERROR: timed out / failed waiting for trade_done: %d\n", rc); close_all_csvs(&csv); return 1; }
 
-    // Fill FIFOs round-robin from CSVs
-    rc = hft_write_orders_round_robin(hft_sim_fd, lane_csv_next_order, &csv, 30000);
-    if (rc) {
-        fprintf(stderr, "ERROR: write_orders_round_robin failed: %d\n", rc);
-        close_all_csvs(&csv);
-        return 1;
-    }
-
-    // Check state before start dispatching
-    struct hft_disp_status st;
-    hft_disp_get_status(hft_sim_fd, &st);
-    fprintf(stderr, "Before DISPATCH: state=%u ready=0x%02x empty=0x%02x full=0x%02x\n",
-            st.state, st.ready_mask, st.empty_mask, st.full_mask);
-
-    // Transition Order Dispatcher to DISPATCH
-    hft_transition_to_dispatch(hft_sim_fd, 1000);
-    printf("Virtualized HFT Simulator has started.\n");
-
-    // Wait until trading is completely finished 
-    struct hft_log_info final_li;
-    rc = hft_log_wait_trade_done(progress_fp, hft_sim_fd, 600000, 2, &final_li);
-    if (rc) {
-        if (rc == -EINTR) {
-            fprintf(stderr, "Interrupted (Ctrl+C). Exiting cleanly.\n");
-        } else {
-            fprintf(stderr, "ERROR: timed out / failed waiting for trade_done: %d\n", rc);
+        // Read all trade log entries 
+        printf("Trading done.\n");
+        printf("Trade log count (trades recorded): %u\n", final_li.count);
+        printf("Trade log overflow: %u\n", final_li.overflow);
+        uint32_t n = final_li.count;
+        if (n > 1024) n = 1024; // safety (matches RTL depth)
+        if (n == 0) {
+            printf("No trades recorded.\n");
+            close_all_csvs(&csv);
+            return 0;
         }
-        close_all_csvs(&csv);
-        if (progress_fp) fclose(progress_fp);
-        return 1;
-    }
-
-    printf("Trading done.\n");
-    printf("Trade log count (trades recorded): %u\n", final_li.count);
-    printf("Trade log overflow: %u\n", final_li.overflow);
-
-    // Read all trade log entries 
-    uint32_t n = final_li.count;
-    if (n > 1024) n = 1024; // safety (matches RTL depth)
-    if (n == 0) {
-        printf("No trades recorded.\n");
-        close_all_csvs(&csv);
-        return 0;
-    }
-
-    struct hft_log_entry *logbuf = calloc(n, sizeof(*logbuf));
-    if (!logbuf) {
-        fprintf(stderr, "ERROR: calloc failed\n");
-        close_all_csvs(&csv);
-        return 1;
-    }
-
-    uint32_t got = 0, overflow = 0;
-    rc = hft_log_read_all(hft_sim_fd, logbuf, n, &got, &overflow);
-    if (rc) {
-        fprintf(stderr, "ERROR: hft_log_read_all failed: %d\n", rc);
+    
+        struct hft_log_entry *logbuf = calloc(n, sizeof(*logbuf));
+        if (!logbuf) {
+            fprintf(stderr, "ERROR: calloc failed\n");
+            close_all_csvs(&csv);
+            return 1;
+        }
+    
+        uint32_t got = 0, overflow = 0;
+        rc = hft_log_read_all(hft_sim_fd, logbuf, n, &got, &overflow);
+        if (rc) {
+            fprintf(stderr, "ERROR: hft_log_read_all failed: %d\n", rc);
+            free(logbuf);
+            close_all_csvs(&csv);
+            return 1;
+        }
+    
+        // Dump to a text file
+        printf("Read back %u trade log entries (overflow=%u)\n", got, overflow);
+        
+        FILE *trades_fp = fopen("hft_trades.txt", "w");
+        if (!trades_fp) {
+            fprintf(stderr, "ERROR: could not open hft_trades.txt for writing: %s\n", strerror(errno));
+            free(logbuf);
+            close_all_csvs(&csv);
+            return 1;
+        }
+        
+        fprintf(trades_fp, "index,word0,word1,engine_id,quantity,price,timestamp\n");
+        hft_log_dump_entries(trades_fp, logbuf, got);
+        
+        fclose(trades_fp);
+    
         free(logbuf);
-        close_all_csvs(&csv);
-        return 1;
+
+        // For now, run once. 
+        break;
     }
 
-    // Dump to stdout (header is emitted by hft_log_dump_entries itself).
-    printf("Read back %u trade log entries (overflow=%u)\n", got, overflow);
-    hft_log_dump_entries(stdout, logbuf, got);
-
-    free(logbuf);
-
-    // Close CSV
+    // Clean up
     close_all_csvs(&csv);
-
     if (progress_fp) fclose(progress_fp);
 
     return 0;
