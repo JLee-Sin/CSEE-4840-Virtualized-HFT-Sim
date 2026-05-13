@@ -2,7 +2,7 @@
 #define _MMU_H_
 
 #include "heap.h"
-#define PAGE_SIZE 8
+#define PAGE_SIZE 64
 #define MAX_PAGES 256
 #define MAX_PAGES_PER_SYMBOL 128
 #define BITMAP_WORDS ((MAX_PAGES + 63) / 64)
