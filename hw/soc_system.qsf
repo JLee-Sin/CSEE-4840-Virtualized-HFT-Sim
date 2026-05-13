@@ -856,3 +856,8 @@ set_global_assignment -name USE_DLL_FREQUENCY_FOR_DQS_DELAY_CHAIN ON
 set_global_assignment -name UNIPHY_SEQUENCER_DQS_CONFIG_ENABLE ON
 set_global_assignment -name OPTIMIZE_MULTI_CORNER_TIMING ON
 set_global_assignment -name ECO_REGENERATE_REPORT ON
+# Search paths for .mif files referenced via ram_init_file attribute
+set_global_assignment -name SEARCH_PATH mmu
+set_global_assignment -name SEARCH_PATH heap_engine
+set_global_assignment -name SEARCH_PATH trade_log
+set_global_assignment -name SEARCH_PATH dispatcher
