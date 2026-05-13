@@ -7,7 +7,7 @@
 /hw/*.sopcinfo
 /hw/output_files/*
 !hw/output_files/
-/hw/soc_system/
+# /hw/soc_system/   (un-gitignored: regenerated tree committed for synth handoff)
 /hw/.qsys_edit/
 /hw/hps_isw_handoff/
 
