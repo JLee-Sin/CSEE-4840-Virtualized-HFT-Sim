@@ -88,7 +88,6 @@ module hft_sim_csv_tb;
     localparam [4:0] R_LOG_CMD   = 5'd11;
     localparam [4:0] R_LOG_DATA0 = 5'd12;
     localparam [4:0] R_LOG_DATA1 = 5'd13;
-    localparam [4:0] R_LOG_DATA2 = 5'd14;
 
     // Dispatcher FSM states (mirror sys_def.svh)
     localparam [1:0] S_IDLE     = 2'd0;
@@ -318,20 +317,17 @@ module hft_sim_csv_tb;
     endtask
 
     // ------------------------------------------------------------------
-    // Read all trade log entries and print
-    // ORDER layout (mirror sys_def): {type[85], price[84:69], qty[68:53],
-    //   symbol[52:32], timestamp[31:0]}. word0 = [31:0], word1 = [63:32],
-    //   word2 = [85:64] (low 22 bits of upper).
+    // Read all trade log entries and print.
+    // 64-bit TRADE_LOG_ENTRY layout (mirror sys_def.svh):
+    //   word0 = [31:0]  timestamp
+    //   word1 = [63:32] {engine_id[7:0], amount[7:0], price[15:0]}
+    // (Old ORDER-shaped entry + LOG_DATA2 are gone.)
     // ------------------------------------------------------------------
     task read_and_print_log(output int trade_count);
         logic [31:0] info;
-        logic [31:0] d0, d1, d2;
-        logic [85:0] entry;
+        logic [31:0] d0, d1;
         int    count;
         int    poll;
-        logic  e_type;
-        logic [15:0] e_price;
-        logic [15:0] e_qty;
         begin
             avl_read(R_LOG_INFO, info);
             count = (info >> 2) & 32'h7FFF;
@@ -358,9 +354,7 @@ module hft_sim_csv_tb;
 
                 avl_read(R_LOG_DATA0, d0);
                 avl_read(R_LOG_DATA1, d1);
-                avl_read(R_LOG_DATA2, d2);
 
-                // New compact 64-bit layout: {engine_id[7:0], amount[7:0], price[15:0], timestamp[31:0]}
                 begin
                     logic [2:0]  e_eng;
                     logic [6:0]  e_amt;

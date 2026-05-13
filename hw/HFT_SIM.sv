@@ -131,7 +131,6 @@ module HFT_SIM #(
     localparam int ADDR_LOG_CMD   = 5'd11; // 0x2C
     localparam int ADDR_LOG_DATA0 = 5'd12; // 0x30
     localparam int ADDR_LOG_DATA1 = 5'd13; // 0x34
-    localparam int ADDR_LOG_DATA2 = 5'd14; // 0x38
 
 
     // Decode Avalon writes into dispatcher and trade-log controls
@@ -278,11 +277,9 @@ module HFT_SIM #(
                     readdata[25] = all_engines_idle;
                     readdata[26] = trade_done;
                 end
-                // Compact 64-bit trade entry packed into 2 words; LOG_DATA2
-                // exists for backward compatibility with older SW and reads 0.
+                // Compact 64-bit trade entry packed into 2 words.
                 ADDR_LOG_DATA0: readdata = avl_log_data_shadow[31:0];
                 ADDR_LOG_DATA1: readdata = avl_log_data_shadow[63:32];
-                ADDR_LOG_DATA2: readdata = 32'd0;
                 default: ;
             endcase
         end
