@@ -206,6 +206,7 @@ void *max_cmp(const void *a, const void *b) {
 }
 
 static int check_for_trade(Heap *asks, Heap *bids) {
+	
 	if(asks->size == 0 || bids->size == 0) {
 		return 0;
 	}
@@ -237,6 +238,7 @@ static int check_for_trade(Heap *asks, Heap *bids) {
 					       	bid->price, 
 						bid->amount - ask->amount
 				);
+
 				update(bids, bid->amount - ask->amount);
 				pop(asks);
 				return 1;
@@ -250,6 +252,7 @@ static int check_for_trade(Heap *asks, Heap *bids) {
 					       	bid->price, 
 						ask->amount - bid->amount
 				);
+
 				update(asks, ask->amount - bid->amount);
 				pop(bids);
 				return 1;
@@ -257,7 +260,8 @@ static int check_for_trade(Heap *asks, Heap *bids) {
 		}
 	} else {
 		return 0;
-	}	
+	}
 }
+
 
 #endif

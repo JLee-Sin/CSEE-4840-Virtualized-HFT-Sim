@@ -246,6 +246,13 @@ int mem_aware_insert(OrderBook *ob, MemoryManager *mm, Order *o, int sym_id, Sim
 }
 
 int check_for_trade_multi(OrderBook *ob, SimStats *stats) {
+	FILE *fptr = fopen("results.txt", "a");
+
+	if(fptr == NULL) {
+		perror("File error");
+		exit(1);
+	}
+
 	if (ob->asks->size == 0 || ob->bids->size == 0) {
 		return 0;
 	}
@@ -270,10 +277,15 @@ int check_for_trade_multi(OrderBook *ob, SimStats *stats) {
 			       	ob->symbol,
 			       	bid->price);
 
+			fprintf(fptr, "A trade has been executed at %d! Sold %d shares of %s at $%d.\n",
+				(uint32_t) ts.tv_nsec,
+				bid->amount,
+			       	ob->symbol,
+			       	bid->price);
 			pop(ob->bids);
 			pop(ob->asks);
 			stats->total_trades++;
-
+			fclose(fptr);
 			return 1;
 		} else if (bid->amount > ask->amount) {
 			struct timespec ts;
@@ -284,12 +296,17 @@ int check_for_trade_multi(OrderBook *ob, SimStats *stats) {
 				       	ob->symbol,
 				       	bid->price,
 					bid->amount - ask->amount);
-
+			fprintf(fptr, "A partial fill has been executed at %d! Sold %d shares of %s at $%d. A bid for %d shares remains.\n",
+					(uint32_t) ts.tv_nsec,
+					ask->amount,
+				       	ob->symbol,
+				       	bid->price,
+					bid->amount - ask->amount);
 			update(ob->bids, bid->amount - ask->amount);
 			pop(ob->asks);
 			stats->total_trades++;
 			stats->total_writes++;
-
+			fclose(fptr);
 			return 1;
 		} else {
 			struct timespec ts;
@@ -301,14 +318,21 @@ int check_for_trade_multi(OrderBook *ob, SimStats *stats) {
 			       	bid->price,
 				ask->amount - bid->amount);
 
+			fprintf(fptr, "A partial fill has been executed at %d! Sold %d shares of %s at $%d. A ask of %d shares remains.\n",
+				(uint32_t) ts.tv_nsec,
+				bid->amount,
+			       	ob->symbol,
+			       	bid->price,
+				ask->amount - bid->amount);
 			update(ob->asks, ask->amount - bid->amount);
 			pop(ob->bids);
 			stats->total_trades++;
 			stats->total_writes++;
-
+			fclose(fptr);
 			return 1;
 		}
 	} else {
+		fclose(fptr);
 		return 0;
 	}
 }
