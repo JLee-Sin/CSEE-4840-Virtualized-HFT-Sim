@@ -27,7 +27,7 @@ module hft_sim_csv_tb;
     // Knobs
     // ------------------------------------------------------------------
     localparam int MAX_ORDERS_PER_LANE = 1660;  // full CSV
-    localparam int MAX_LOG_ENTRIES     = 8192;  // matches new TRADE_LOG_DEPTH
+    localparam int MAX_LOG_ENTRIES     = 16384;  // matches new TRADE_LOG_DEPTH
     localparam int CYCLE_TIMEOUT       = 10_000_000;
 
     string CSV_PATH [8];
@@ -274,6 +274,7 @@ module hft_sim_csv_tb;
     // ------------------------------------------------------------------
     task wait_for_done(input int max_polls);
         logic [31:0] st;
+        logic [31:0] li;
         int polls;
         begin
             int done_flag;
@@ -288,6 +289,25 @@ module hft_sim_csv_tb;
                     polls++;
                     if (polls > max_polls) begin
                         $fdisplay(logfp,"WARN: wait_for_done timed out after %0d polls (state=%0d)", polls, status_state(st));
+                        done_flag = 1;
+                    end else begin
+                        repeat (50) @(posedge clk);
+                    end
+                end
+            end
+            // Dispatcher DONE only means orders pushed; engines may still
+            // be cascading. Wait for trade_done (bit 26 of LOG_INFO).
+            polls = 0;
+            done_flag = 0;
+            while (done_flag == 0) begin
+                avl_read(R_LOG_INFO, li);
+                if (li[26]) begin
+                    $fdisplay(logfp,"TRADE_DONE: engines settled after %0d polls", polls);
+                    done_flag = 1;
+                end else begin
+                    polls++;
+                    if (polls > max_polls) begin
+                        $fdisplay(logfp,"WARN: trade_done timed out after %0d polls", polls);
                         done_flag = 1;
                     end else begin
                         repeat (50) @(posedge clk);
@@ -314,7 +334,7 @@ module hft_sim_csv_tb;
         logic [15:0] e_qty;
         begin
             avl_read(R_LOG_INFO, info);
-            count = (info >> 2) & 32'h3FFF;
+            count = (info >> 2) & 32'h7FFF;
             trade_count = count;
             $fdisplay(logfp,"LOG: %0d trade(s) recorded (overflow=%0d)", count, info[0]);
 

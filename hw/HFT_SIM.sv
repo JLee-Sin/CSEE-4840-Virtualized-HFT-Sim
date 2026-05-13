@@ -13,7 +13,7 @@
 `include "sys_def.svh"
 
 module HFT_SIM #(
-    parameter int TRADE_LOG_DEPTH = 8192
+    parameter int TRADE_LOG_DEPTH = 16384
 ) (
     input  logic                                    clk,
     input  logic                                    rst_n,
@@ -263,20 +263,20 @@ module HFT_SIM #(
                                 avl_disp_push_ready,
                                 avl_disp_state};
                 ADDR_LOG_INFO: begin
-                    // [0] = overflow
-                    // [1] = selected log entry valid in DATA0/1/2
+                    // [0]    = overflow
+                    // [1]    = selected log entry valid in DATA0/1/2
                     // [2 +: LOG_COUNT_W] = number of valid entries in trade_log
-                    // [16 +: 'N] = heap engine idle indicator
-                    // [24] = All heap engines are idle signal
-                    // [25] = all trades are done signal
-                    // [31:26] = nothing
+                    // [17 +: 'N]         = heap engine idle indicator
+                    // [25]   = All heap engines are idle signal
+                    // [26]   = all trades are done signal
+                    // [31:27] = nothing
                     readdata = 32'd0;
                     readdata[0] = avl_log_overflow;
                     readdata[1] = avl_log_data_valid;
                     readdata[2 +: LOG_COUNT_W] = avl_log_count;
-                    readdata[16 +: `N] = eng_idle;
-                    readdata[24] = all_engines_idle;
-                    readdata[25] = trade_done;
+                    readdata[17 +: `N] = eng_idle;
+                    readdata[25] = all_engines_idle;
+                    readdata[26] = trade_done;
                 end
                 // Compact 64-bit trade entry packed into 2 words; LOG_DATA2
                 // exists for backward compatibility with older SW and reads 0.
