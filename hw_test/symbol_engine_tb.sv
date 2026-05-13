@@ -166,7 +166,7 @@ module symbol_engine_tb;
         @(posedge clk);
         while (!order_in_ready) @(posedge clk);
         order_in_valid <= 1'b1;
-        order_in_data  <= build_dispatch(price, amount[14:0], is_ask);
+        order_in_data  <= build_dispatch(price, amount[14:0], !is_ask);
         @(posedge clk);
         order_in_valid <= 1'b0;
         order_in_data  <= '0;

@@ -90,18 +90,17 @@ module heap_fsm #(
     // Comparator (operates on pre-extracted fields). Returns 1 iff the
     // operand identified by the "a" fields should sit closer to the root
     // than the "b" operand. Ordering: price (max or min per HEAP_KIND),
-    // then larger amount. Timestamp tiebreak intentionally dropped; the
-    // dataset has 35/13280 same-(type,sym,price,qty) duplicates and trade
-    // outcomes are identical either way (matched amount unchanged).
+    // then earlier timestamp wins (FIFO at same price, matches the C
+    // reference's max_cmp/min_cmp in sw_sim/heap.h).
 
     function automatic logic a_wins_fields (
-        input logic [15:0] ap, input logic [15:0] aa,
-        input logic [15:0] bp, input logic [15:0] ba
+        input logic [15:0] ap, input logic [31:0] at,
+        input logic [15:0] bp, input logic [31:0] bt
     );
         if (ap != bp)
             a_wins_fields = (HEAP_KIND == MAX_HEAP) ? (ap > bp) : (ap < bp);
         else
-            a_wins_fields = (aa > ba);
+            a_wins_fields = (at < bt);
     endfunction
 
     // Virtual-address construction
@@ -195,23 +194,25 @@ module heap_fsm #(
     // selects out of the always_* blocks below.
 
     wire [15:0] cur_price     = cur_node[84:69];
-    wire [15:0] cur_amount    = cur_node[68:53];
+    wire [31:0] cur_ts        = cur_node[31:0];
     wire [15:0] parent_price  = parent_node[84:69];
-    wire [15:0] parent_amount = parent_node[68:53];
+    wire [31:0] parent_ts     = parent_node[31:0];
     wire [15:0] left_price    = left_node[84:69];
-    wire [15:0] left_amount   = left_node[68:53];
+    wire [31:0] left_ts       = left_node[31:0];
     wire [15:0] right_price   = right_node[84:69];
-    wire [15:0] right_amount  = right_node[68:53];
+    wire [31:0] right_ts      = right_node[31:0];
 
     // Two shared comparators, state-muxed. cmp0 drives `cur_wins_parent` in
     // PUSH and `left_wins_cur` in POP sift-down. cmp1 drives the right-vs-
     // (left or cur) decision, with its b-side selected by cmp0's result so
     // we don't need a third comparator for `right_wins_left`.
-    logic [15:0] cmp0_ap, cmp0_aa, cmp0_bp, cmp0_ba;
-    logic [15:0] cmp1_ap, cmp1_aa, cmp1_bp, cmp1_ba;
+    logic [15:0] cmp0_ap, cmp0_bp;
+    logic [15:0] cmp1_ap, cmp1_bp;
+    logic [31:0] cmp0_at, cmp0_bt;
+    logic [31:0] cmp1_at, cmp1_bt;
 
-    wire cmp0_result = a_wins_fields(cmp0_ap, cmp0_aa, cmp0_bp, cmp0_ba);
-    wire cmp1_result = a_wins_fields(cmp1_ap, cmp1_aa, cmp1_bp, cmp1_ba);
+    wire cmp0_result = a_wins_fields(cmp0_ap, cmp0_at, cmp0_bp, cmp0_bt);
+    wire cmp1_result = a_wins_fields(cmp1_ap, cmp1_at, cmp1_bp, cmp1_bt);
 
     // Pop-sift uses cmp0 as left-vs-cur; everything else (PUSH, and idle
     // cycles) leaves cmp0 wired to cur-vs-parent. The `best` mux is read
@@ -228,16 +229,16 @@ module heap_fsm #(
 
     always_comb begin
         if (in_pop_sift) begin
-            cmp0_ap = left_price;   cmp0_aa = left_amount;
-            cmp0_bp = cur_price;    cmp0_ba = cur_amount;
+            cmp0_ap = left_price;   cmp0_at = left_ts;
+            cmp0_bp = cur_price;    cmp0_bt = cur_ts;
         end else begin
-            cmp0_ap = cur_price;    cmp0_aa = cur_amount;
-            cmp0_bp = parent_price; cmp0_ba = parent_amount;
+            cmp0_ap = cur_price;    cmp0_at = cur_ts;
+            cmp0_bp = parent_price; cmp0_bt = parent_ts;
         end
         cmp1_ap = right_price;
-        cmp1_aa = right_amount;
-        cmp1_bp = cmp0_result ? left_price  : cur_price;
-        cmp1_ba = cmp0_result ? left_amount : cur_amount;
+        cmp1_at = right_ts;
+        cmp1_bp = cmp0_result ? left_price : cur_price;
+        cmp1_bt = cmp0_result ? left_ts    : cur_ts;
     end
 
     // Aliases for next-state logic readability.

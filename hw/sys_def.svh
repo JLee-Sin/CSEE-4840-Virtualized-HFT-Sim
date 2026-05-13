@@ -13,8 +13,14 @@
 `define __SYS_DEFS_SVH__
 
 // System Parameters
-`define N 8       // Number of symbols 
+`define N 8       // Number of symbols
 `define ORDER_WIDTH 86
+
+// Trade log entry width.
+// A trade confirmation only needs: engine_id (3b) + amount (7b, always <128)
+// + price (16b) + timestamp (32b) = 58 bits. Pack byte-aligned into 64 bits
+// for clean SW reads. See TRADE_LOG_ENTRY struct below.
+`define TRADE_WIDTH 64
 
 // Time scale
 `timescale 1ns/100ps
@@ -23,7 +29,7 @@
 `define WORD_WIDTH 32
 
 // Order Dispatch Parameters
-`define FIFO_SZ 1660  // 
+`define FIFO_SZ 1660  //
 
 ///////////// STRUCTS /////////////
 
@@ -68,5 +74,19 @@ typedef enum logic [1:0] {
   DISPATCH  = 2'd2,     // Dispatching orders
   DONE      = 2'd3      // Done dispatching
 } DISPATCH_STATE;
+
+// Trade log entry (compact, 64 bits).
+//   [63:56] engine_id (3b used, 5b reserved)
+//   [55:48] amount    (7b used, 1b reserved; trades cap at < 128)
+//   [47:32] price     (16b)
+//   [31:0]  timestamp (32b)
+// Stored in trade_log RAM. Read out via LOG_DATA0 (bits 31:0) and
+// LOG_DATA1 (bits 63:32); LOG_DATA2 is no longer used and reads 0.
+typedef struct packed {
+    logic [7:0]  engine_id;
+    logic [7:0]  amount;
+    logic [15:0] price;
+    logic [31:0] timestamp;
+} TRADE_LOG_ENTRY;
 
 `endif // __SYS_DEFS_SVH__

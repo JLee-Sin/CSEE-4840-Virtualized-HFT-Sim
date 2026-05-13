@@ -58,11 +58,11 @@
 #define LOG_INFO_OVERFLOW_BIT           0
 #define LOG_INFO_DATA_VALID_BIT         1
 #define LOG_INFO_COUNT_SHIFT            2
-#define LOG_INFO_COUNT_MASK             (0x7FFu << LOG_INFO_COUNT_SHIFT) /* for depth 1024 */
-#define LOG_INFO_ENGINE_IDLE_SHIFT      16
+#define LOG_INFO_COUNT_MASK             (0x7FFFu << LOG_INFO_COUNT_SHIFT) /* 15b count for depth 16384 */
+#define LOG_INFO_ENGINE_IDLE_SHIFT      17
 #define LOG_INFO_ENGINE_IDLE_MASK       (0xFFu << LOG_INFO_ENGINE_IDLE_SHIFT)
-#define LOG_INFO_ALL_ENGINES_IDLE_BIT   24
-#define LOG_INFO_TRADE_DONE_BIT         25
+#define LOG_INFO_ALL_ENGINES_IDLE_BIT   25
+#define LOG_INFO_TRADE_DONE_BIT         26
 
 // Information about HFT_SIM device
 struct hft_dev {
