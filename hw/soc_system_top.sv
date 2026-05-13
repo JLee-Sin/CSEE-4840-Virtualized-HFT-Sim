@@ -183,7 +183,6 @@ module soc_system_top(
     wire [3:0] hft_key;
     wire [6:0] hft_hex0, hft_hex1, hft_hex2, hft_hex3, hft_hex4, hft_hex5;
 
-
     soc_system soc_system0(
         .clk_clk                      ( CLOCK_50 ),
         .reset_reset_n                ( 1'b1 ),
@@ -264,13 +263,13 @@ module soc_system_top(
         .hps_hps_io_gpio_inst_GPIO61  ( HPS_GSENSOR_INT ), 
 
         // HFT Signals
-        .hft_sim_0_soc_io_KEY  ( hft_key  ),
-        .hft_sim_0_soc_io_HEX0 ( hft_hex0 ),
-        .hft_sim_0_soc_io_HEX1 ( hft_hex1 ),
-        .hft_sim_0_soc_io_HEX2 ( hft_hex2 ),
-        .hft_sim_0_soc_io_HEX3 ( hft_hex3 ),
-        .hft_sim_0_soc_io_HEX4 ( hft_hex4 ),
-        .hft_sim_0_soc_io_HEX5 ( hft_hex5 )
+        .hft_sim_0_soc_io_key  ( hft_key  ),
+        .hft_sim_0_soc_io_hex0 ( hft_hex0 ),
+        .hft_sim_0_soc_io_hex1 ( hft_hex1 ),
+        .hft_sim_0_soc_io_hex2 ( hft_hex2 ),
+        .hft_sim_0_soc_io_hex3 ( hft_hex3 ),
+        .hft_sim_0_soc_io_hex4 ( hft_hex4 ),
+        .hft_sim_0_soc_io_hex5 ( hft_hex5 )
     );
     
         // The following quiet the "no driver" warnings for output
