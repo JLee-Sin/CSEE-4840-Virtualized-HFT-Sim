@@ -1,16 +1,11 @@
-// trade_log.sv - trade event memory for software collection
+// trade_log.sv
 //
 // Stores every NODE_WIDTH-bit trade event the trade_aggregator emits in a
 // linear, append-only memory. Software collects trades by reading
 // mem[0 .. sw_count-1] and then pulses sw_clear to recycle the log.
 //
-// Default NODE_WIDTH is 64 (compact trade entry layout defined in
-// sys_def.svh's TRADE_LOG_ENTRY). Prior versions used 86-bit ORDER
-// entries; the compact form drops type, full-width amount, and the
-// 21-bit symbol field, freeing M10K block budget so we can grow
-// LOG_DEPTH to 8192 (max possible trades on the 13,280-order dataset).
+// Default NODE_WIDTH is 64
 //
-// Backpressure:
 //   trade_in_ready falls when the log is full. The aggregator stalls
 //   until software clears the log. If a trade tries to push while the
 //   log is full, sw_overflow latches high so software can detect a

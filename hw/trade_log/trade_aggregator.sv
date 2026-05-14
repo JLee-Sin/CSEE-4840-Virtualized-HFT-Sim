@@ -1,21 +1,15 @@
-// trade_aggregator - Round-robin merge of N engine trade streams.
+// trade_aggregator: Round-robin merge of N heap engine streams.
 //
 // Each engine drives its own valid/data/ready handshake. The aggregator
 // scans engines starting from a round-robin pointer; the first engine
-// found with a valid trade wins this cycle. The selected engine sees
-// trade_out_ready propagated back to it as ready; all others see ready=0.
-// On a successful handshake, the RR pointer advances to the engine after
-// the winner so no engine starves.
+// found with a valid trade wins this cycle; all others see ready=0.
+// On a successful handshake, the Round Robin pointer advances to the engine              // afterthe winner so no engine starves.
 //
-// Compaction:
-//   Engines emit full 86-bit ORDER nodes on their trade outputs (type,
-//   price, amount, symbol, timestamp). For the trade log we only keep:
+// For the trade log we only keep:
 //     - engine_id   (the winning engine's index, 3b -> low byte)
 //     - amount      (low 7b of the ORDER's amount field; trades cap <128)
 //     - price       (16b)
 //     - timestamp   (32b)
-//   The aggregator does this compaction inline and outputs a 64-bit
-//   TRADE_LOG_ENTRY (see hw/sys_def.svh).
 
 module trade_aggregator #(
     parameter int N           = 8,
@@ -25,9 +19,6 @@ module trade_aggregator #(
     input  logic                   clk,
     input  logic                   rst_n,
 
-    // valid and ready are packed bit-vectors so iverilog 11 propagates
-    // index-assignments through the port boundary; data stays as an
-    // unpacked array because each element is NODE_WIDTH bits.
     input  logic [N-1:0]           eng_trade_valid,
     input  logic [NODE_WIDTH-1:0]  eng_trade_data  [N],
     output logic [N-1:0]           eng_trade_ready,

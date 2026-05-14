@@ -1,14 +1,14 @@
-// heap_fsm.sv - Single-heap FSM with tiered storage
+// heap_fsm.sv: Single-heap FSM with tiered storage
 //
 // Drives one priority-ordered heap (max or min) for one symbol slot.
 // Used in pairs by symbol_engine: a max-heap for bids, a min-heap for asks.
 //
-// Storage tier:
+// Storage:
 //   Indices [0 .. PRIVATE_NODES-1] live in a single-cycle private BRAM
-//   accessed directly through the priv_* port group. Indices
-//   [PRIVATE_NODES .. MAX_NODES-1] live in MMU-mediated virtual memory
-//   accessed through the virt_* port group, which the parent module
-//   multiplexes onto its MMU client port. ENGINE_ID is hard-wired into
+//   accessed directly through the priv_* port group.
+//
+//   Indices [PRIVATE_NODES .. MAX_NODES-1] live in MMU-mediated virtual memory
+//   accessed through the virt_* port group. ENGINE_ID is hard-wired into
 //   VA[31:29] per the engine/MMU contract.
 //
 // Operations (cmd_op):
@@ -29,9 +29,9 @@ module heap_fsm #(
                                              // 1 = MIN-heap (asks)
     parameter int  ENGINE_ID     = 0,        // 0..7, drives VA[31:29]
     parameter int  NODE_WIDTH    = 86,
-    parameter int  PRIVATE_NODES = 64,       // size of the private BRAM tier
+    parameter int  PRIVATE_NODES = 64,       // size of the private BRAM Memory
     parameter int  MAX_NODES     = 1088,     // 64 private + 1024 virtual; 1024 cap
-                                             // is set by the MMU's pt_key width
+
     parameter int  IDX_WIDTH     = $clog2(MAX_NODES + 1)
 ) (
     input  logic                  clk,

@@ -467,7 +467,7 @@ module symbol_engine #(
 endmodule
 
 
-// priv_bram - Single-port BRAM, DEPTH entries by WIDTH bits, one-cycle read latency
+// priv_bram: Single-port BRAM, DEPTH entries by WIDTH bits, one-cycle read latency
 
 module priv_bram #(
     parameter int WIDTH = 86,

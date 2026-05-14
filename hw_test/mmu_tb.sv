@@ -1,4 +1,4 @@
-// mmu_tb.sv - End-to-end MMU testbench.
+// mmu_tb.sv
 //
 // Exercises the 8 client ports against the real MMU + 4 mem_bank instances.
 // Covers:
@@ -9,11 +9,6 @@
 //   T5: concurrent requests from two engines (stresses page_table TDP)
 //   T6: large fan-out concurrent writes from all 8 engines (stress)
 //   T7: read of unallocated VA (should reject)
-//
-// Protocol per engine port:
-//   * Drive req_valid + req_va + req_wr + req_wdata.
-//   * Wait for req_ready=1 (same-cycle handshake), then drop req_valid.
-//   * Eventually resp_valid or resp_reject pulses once. Sample resp_data on resp_valid.
 
 `timescale 1ns/1ps
 
@@ -23,7 +18,6 @@ module mmu_tb;
     logic rst_n = 0;
     always #5 clk = ~clk;
 
-    // 8 client ports (vectorized for TB convenience)
     logic        req_valid    [8];
     logic [31:0] req_va       [8];
     logic        req_wr       [8];
@@ -33,7 +27,7 @@ module mmu_tb;
     logic        resp_valid   [8];
     logic        resp_reject  [8];
 
-    // 4 bank ports (driven by MMU, consumed by mem_bank)
+
     logic [31:0] mem_addr        [4];
     logic        mem_we          [4];
     logic        mem_re          [4];
@@ -228,7 +222,7 @@ module mmu_tb;
 
         $display("=== mmu_tb starting ===");
 
-        // -------- T1: simple write-then-read on engine 0 --------
+        // T1: simple write-then-read on engine 0
         $display("-- T1: simple write/read on engine 0 bid idx 5");
         va = make_va(0, 1'b0, 5);
         do_write(0, va, 86'h0_A5A5_A5A5_A5A5_A5A5_5A5A, rejected);
@@ -239,7 +233,7 @@ module mmu_tb;
         $display("[DEBUG] T1 expected=%h got=%h", 86'h0_A5A5_A5A5_A5A5_A5A5_5A5A, rd_data);
         check("T1 readback matches",   rd_data == 86'h0_A5A5_A5A5_A5A5_A5A5_5A5A);
 
-        // -------- T2: multiple distinct VAs on engine 0 --------
+        // T2: multiple distinct VAs on engine 0
         $display("-- T2: multiple VAs on engine 0");
         for (i = 0; i < 8; i++) begin
             va = make_va(0, 1'b0, 10 + i);
@@ -255,7 +249,7 @@ module mmu_tb;
                   rd_data == {78'd0, 8'(i)});
         end
 
-        // -------- T3: cross-engine isolation --------
+        // T3: cross-engine isolation
         $display("-- T3: cross-engine isolation");
         // Same virt_idx 100 on engines 0..3, different data each
         for (i = 0; i < 4; i++) begin
@@ -271,7 +265,7 @@ module mmu_tb;
                   rd_data == ({54'd0, 32'hCAFE_0000} | 86'(i)));
         end
 
-        // -------- T4: update existing VA --------
+        // T4: update existing VA
         $display("-- T4: update existing VA");
         va = make_va(2, 1'b1, 7);   // engine 2 ask idx 7
         do_write(2, va, 86'h0_1111_1111_1111_1111_1111, rejected);
@@ -285,23 +279,15 @@ module mmu_tb;
         check("T4 readback is second write value",
               rd_data == 86'h0_2222_2222_2222_2222_2222);
 
-        // -------- T7: read of unallocated VA --------
-        // The MMU triggers an on-demand allocation for unallocated VAs,
-        // so the read returns whatever garbage was at the newly-allocated
-        // physical slot. Just confirm the request doesn't hang.
+        // T7: read of unallocated VA
         $display("-- T7: read of unallocated VA (engine 5 bid idx 999) completes");
         va = make_va(5, 1'b0, 999);
         do_read(5, va, rd_data, rejected);
         check("T7 unallocated read completes without timeout", 1'b1);
 
-        // -------- T8: single-engine page-fill stress --------
-        // Write 80 unique VAs on engine 1 bid heap. Each VA gets its own
-        // PT entry that maps to a unique (physical_page, node) tuple. With
-        // 64 nodes per page, this guarantees at least one page transition,
-        // which exercises page_has_free tracking. Then read all 80 back
-        // and verify each holds its own distinct payload. A failure means
-        // the allocator handed out a duplicate (page, node) due to stale
-        // page_has_free.
+        // T8: single-engine page-fill stress
+        // Read all 80 back and verify each holds its own distinct payload.
+
         $display("-- T8: 80 unique VAs on engine 1 bid (page-fill stress)");
         for (i = 0; i < 80; i++) begin
             va = make_va(1, 1'b0, 200 + i);
@@ -316,12 +302,9 @@ module mmu_tb;
                   rd_data == ({54'd0, 32'hF00D_0000} | 86'(i)));
         end
 
-        // -------- T9: multi-engine concurrent allocation --------
-        // Walk through 4 engines x 2 heap_kinds x 8 indices = 64 VAs,
-        // interleaved so the allocator gets back-to-back single-port
-        // requests that mostly exercise the ptw0_alloc-alone path
-        // (the one Jayden's attempt-1 leaves the page_has_free update
-        // out of). Then read all 64 back and verify integrity.
+        // T9: multi-engine concurrent allocation
+        // Walk through 64 VAs,
+
         $display("-- T9: 64 interleaved VAs across engines 0..3, both heaps");
         begin
             int   t9_eng, t9_idx;
@@ -347,13 +330,9 @@ module mmu_tb;
             end
         end
 
-        // -------- T10: repeated update on same VAs (heavy page_table churn) --------
-        // For each VA written in T2, do 3 more writes with different
-        // payloads, ending on a known value. Verify the final readback.
-        // This exercises page-table re-lookup (same key) without new
-        // physical-page allocation, isolating the allocator from the
-        // page_table read path.
-        $display("-- T10: 4 updates per VA on T2's 8 engine-0 slots");
+        // T10: repeated update on same VAs
+
+        $display("T10: 4 updates per VA on T2's 8 engine-0 slots");
         for (int round = 1; round <= 3; round++) begin
             for (i = 0; i < 8; i++) begin
                 va = make_va(0, 1'b0, 10 + i);

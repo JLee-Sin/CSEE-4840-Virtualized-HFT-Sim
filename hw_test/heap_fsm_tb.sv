@@ -1,11 +1,9 @@
-// heap_fsm_tb.sv - Testbench for heap_fsm
+// heap_fsm_tb.sv
 //
 // Exercises the four heap operations (push, pop, peek, update) on a max-heap
-// with parameters chosen to keep simulation small while still triggering the
-// boundary between the private BRAM tier and the MMU-mediated virtual tier.
 //
 // PRIVATE_NODES is shrunk to 4 so a 5th push spills into virtual memory.
-// MAX_NODES is set to 128 
+// MAX_NODES is set to 128
 
 `timescale 1ns/1ps
 
@@ -89,8 +87,6 @@ module heap_fsm_tb;
     );
 
 
-    // Indexed by the low 8 bits of the flat node ID. Collision-free for
-    // the parameter set used here (virt_idx fits in 8 bits, heap_kind=0).
 
     assign virt_req_ready   = 1'b1;
     assign virt_resp_reject = 1'b0;

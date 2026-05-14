@@ -10,16 +10,12 @@
 //   0: AAPL.csv  1: BSX.csv  2: BUS.csv  3: MMM.csv
 //   4: MSFT.csv  5: SBUX.csv 6: TUS.csv  7: WMT.csv
 //
-// Run with iverilog. To keep sim time bounded, MAX_ORDERS_PER_LANE caps
-// how many orders we read from each CSV (set small for smoke test).
 
 `timescale 1ns/100ps
 `include "sys_def.svh"
 
 module hft_sim_csv_tb;
 
-    // Log file (iverilog's vvp buffers stdout when redirected; writing to a
-    // real file via $fdisplay + closing on $finish guarantees we see output).
     integer logfp;
     initial logfp = $fopen("/tmp/csv_tb.out", "w");
 

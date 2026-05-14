@@ -20,10 +20,6 @@ module HPTW #(
     output logic [13:0]  pt_waddr,
     output logic [14:0]  pt_wdata,
 
-    // Allocator interface. The wrapper (mmu.sv) hands HPTW a pre-selected
-    // (page, node) tuple based on the request's partition. HPTW just
-    // consumes it on ALLOCATE; the priority-encoder logic that used to
-    // live here is gone.
     input  logic         alloc_avail,
     input  logic [7:0]   alloc_page_in,
     input  logic [5:0]   alloc_node_in,

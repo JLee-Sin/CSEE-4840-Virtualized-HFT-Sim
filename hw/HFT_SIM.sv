@@ -1,6 +1,6 @@
-// HFT_SIM.sv - System top-level
+// HFT_SIM.sv
 //
-// Wires the full HFT pipeline:
+// Wires the full HFT
 // includes the following...
 //   - 1 order_dispatcher
 //   - 8 symbol_engines
@@ -92,10 +92,7 @@ module HFT_SIM #(
     logic                       mmu_resp_valid  [`N];
     logic                       mmu_resp_reject [`N];
 
-    // Engines to trade aggregator. valid and ready are packed bit-vectors
-    // so per-element assignments propagate through the port boundary on
-    // older simulators (notably iverilog 11). Data stays as an unpacked
-    // array because each element is `ORDER_WIDTH bits.
+    // Engines to trade aggregator.
     logic [`N-1:0]              eng_trade_valid;
     logic [`ORDER_WIDTH-1:0]    eng_trade_data  [`N];
     logic [`N-1:0]              eng_trade_ready;

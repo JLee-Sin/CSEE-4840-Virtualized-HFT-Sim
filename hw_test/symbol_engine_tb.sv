@@ -1,4 +1,4 @@
-// symbol_engine_tb.sv - Testbench for symbol_engine
+// symbol_engine_tb.sv: Testbench for symbol_engine
 //
 // Drives orders into one symbol_engine (ENGINE_ID=0) and verifies the
 // trade-controller behavior: no trade on non-overlapping prices, exact
@@ -69,12 +69,7 @@ module symbol_engine_tb;
         .ask_size_o      (ask_size_o)
     );
 
-    // MMU stub
-    //
-    // Same structure as heap_fsm_tb's stub: a small array indexed by a
-    // hash of VA bits. The default PRIVATE_NODES=64 inside heap_fsm means
-    // these tests never touch the virtual tier, but the stub is here in
-    // case future tests do.
+    // MMU stub needed encase future test touch virtual memory
 
     assign mmu_req_ready   = 1'b1;
     assign mmu_resp_reject = 1'b0;
@@ -154,7 +149,6 @@ module symbol_engine_tb;
         na = n[68:53];
     endfunction
 
-    // Stimulus tasks
 
     int errors = 0;
 

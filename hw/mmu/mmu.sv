@@ -249,9 +249,7 @@ module mmu (
 
     // Per-partition write-pointer allocator. 16 partitions, one per
     // (engine_id[2:0], heap_kind) tuple. Each partition owns 15 contiguous
-    // physical pages x 64 nodes = 960 unique slots. Allocation is purely a
-    // monotonic counter increment within the partition; no shared bitmap,
-    // no priority encoder, no inter-engine contention.
+    // physical pages x 64 nodes = 960 unique slots.
     logic [3:0] partition_page_off [16];   // 0..14
     logic [5:0] partition_node_off [16];   // 0..63
     logic       partition_full     [16];   // 1 once all 960 slots consumed
@@ -263,7 +261,7 @@ module mmu (
     assign ptw1_partition = {ptw1_pipe_va[31:29], ptw1_pipe_va[10]};
 
     // Absolute visible-page index = partition * 15 + per-partition offset.
-    // Encoded via a precomputed base lookup (cheaper than a runtime *15).
+    // Encoded via a precomputed base lookup.
     logic [7:0] partition_base [16];
     initial begin
         for (int p = 0; p < 16; p++) partition_base[p] = 8'(p * 15);
@@ -287,10 +285,6 @@ module mmu (
     logic [7:0] ptw0_alloc_page, ptw1_alloc_page;
     logic [5:0] ptw0_alloc_node, ptw1_alloc_node;
 
-    // Same-partition collision: two PTW lanes can't safely share a partition
-    // in one cycle without serializing the write-pointer update. Per the
-    // one-in-flight contract this can't happen (one engine = one outstanding
-    // request), but check anyway and reject ptw1 if it does.
     logic same_alloc_collision;
     assign same_alloc_collision = ptw0_alloc && ptw1_alloc
                                && (ptw0_partition == ptw1_partition);
